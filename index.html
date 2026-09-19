@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Штаб</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #14121a);
+    --card: var(--tg-theme-secondary-bg-color, #1f1c29);
+    --text: var(--tg-theme-text-color, #f2eff8);
+    --hint: var(--tg-theme-hint-color, #9a94ab);
+    --accent: var(--tg-theme-button-color, #a56cf0);
+    --ok: #4cc38a;
+    --warn: #f0b429;
+    --bad: #ef6461;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px 14px 32px; background: var(--bg); color: var(--text);
+         font: 15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--hint); margin: 22px 0 8px; }
+  .sub { color: var(--hint); font-size: 13px; }
+  .card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+  .big { display: flex; align-items: baseline; gap: 10px; }
+  .big b { font-size: 36px; }
+  .bar { height: 8px; border-radius: 4px; background: rgba(127,127,127,.25); overflow: hidden; margin-top: 8px; }
+  .bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+  .row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .pct { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .delta { font-size: 12px; margin-left: 6px; }
+  .up { color: var(--ok); } .down { color: var(--bad); }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 8px; background: rgba(127,127,127,.22); color: var(--hint); margin-right: 6px; }
+  .p1 { color: var(--bad); } .p2 { color: var(--warn); }
+  .empty { color: var(--hint); text-align: center; padding: 30px 10px; }
+  .item { padding: 8px 0; border-top: 1px solid rgba(127,127,127,.18); }
+  .item:first-child { border-top: 0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+
+  function readData() {
+    var m = /[#&]d=([A-Za-z0-9_-]+)/.exec(location.hash);
+    if (!m) return null;
+    try {
+      var b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      var bin = atob(b64), bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+    } catch (e) { return null; }
+  }
+
+  // Данные приходят в адресе после «#» от бота и никуда не отправляются: страница статичная и ничего не хранит.
+  var d = readData();
+  var app = document.getElementById('app');
+
+  var head = el('div');
+  head.appendChild(el('h1', null, '🟣 Штаб'));
+  app.appendChild(head);
+
+  if (!d) {
+    head.appendChild(el('div', 'sub', 'Открой дашборд из бота кнопкой «Дашборд»: данные приходят оттуда.'));
+    app.appendChild(el('div', 'empty', 'Нет данных'));
+    return;
+  }
+
+  head.appendChild(el('div', 'sub', 'Обновлено: ' + (d.t || '—')));
+
+  // Общий прогресс
+  var sum = el('div', 'card');
+  var big = el('div', 'big');
+  big.appendChild(el('b', null, (d.all || 0) + '%'));
+  big.appendChild(el('span', 'sub', 'общая готовность'));
+  sum.appendChild(big);
+  var bar = el('div', 'bar'), fill = el('i');
+  fill.style.width = Math.max(0, Math.min(100, d.all || 0)) + '%';
+  bar.appendChild(fill); sum.appendChild(bar);
+  if (d.cards) {
+    sum.appendChild(el('div', 'sub', 'Карточки: закрыто ' + d.cards[1] + ' из ' + d.cards[0] +
+      (d.cards[2] ? ', в работе ' + d.cards[2] : '') + (d.cards[3] ? ', ждут проверки ' + d.cards[3] : '')));
+  }
+  app.appendChild(sum);
+
+  // Направления: [название, процент, было]
+  if (d.dirs && d.dirs.length) {
+    app.appendChild(el('h2', null, 'Направления'));
+    d.dirs.forEach(function (x) {
+      var c = el('div', 'card'), r = el('div', 'row');
+      r.appendChild(el('span', null, x[0]));
+      var p = el('span', 'pct', x[1] + '%');
+      if (x.length > 2 && x[2] !== null && x[2] !== x[1]) {
+        var diff = x[1] - x[2];
+        p.appendChild(el('span', 'delta ' + (diff > 0 ? 'up' : 'down'), (diff > 0 ? '+' : '') + diff));
+      }
+      r.appendChild(p); c.appendChild(r);
+      var b = el('div', 'bar'), f = el('i');
+      f.style.width = Math.max(0, Math.min(100, x[1])) + '%';
+      b.appendChild(f); c.appendChild(b);
+      app.appendChild(c);
+    });
+  }
+
+  // Списки: [id, название, исполнитель, приоритет]
+  function list(title, items) {
+    if (!items || !items.length) return;
+    app.appendChild(el('h2', null, title));
+    var c = el('div', 'card');
+    items.forEach(function (x) {
+      var it = el('div', 'item');
+      var meta = el('div');
+      meta.appendChild(el('span', 'tag p' + (x[3] || 2), 'P' + (x[3] || 2)));
+      meta.appendChild(el('span', 'tag', x[2] || '—'));
+      meta.appendChild(el('span', 'sub', x[0]));
+      it.appendChild(meta);
+      it.appendChild(el('div', null, x[1]));
+      c.appendChild(it);
+    });
+    app.appendChild(c);
+  }
+  list('Ждут решения Виктории', d.ask);
+  list('Делаем сейчас', d.top);
+})();
+</script>
+</body>
+</html>
