@@ -13,43 +13,50 @@
     --hint: var(--tg-theme-hint-color, #9a94ab);
     --accent: var(--tg-theme-button-color, #a56cf0);
     --accent-text: var(--tg-theme-button-text-color, #fff);
+    --line: rgba(127,127,127,.22);
     --ok: #4cc38a; --warn: #f0b429; --bad: #ef6461;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 12px 12px 96px; background: var(--bg); color: var(--text);
-         font: 15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
-  h1 { font-size: 20px; margin: 0 0 2px; }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--hint); margin: 18px 0 8px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; padding: 12px 12px 110px; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { font-size: 20px; margin: 2px 0 0; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--hint); margin: 20px 2px 8px; }
   .sub { color: var(--hint); font-size: 13px; }
-  .card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
-  .big { display: flex; align-items: baseline; gap: 10px; }
-  .big b { font-size: 36px; }
-  .bar { height: 8px; border-radius: 4px; background: rgba(127,127,127,.25); overflow: hidden; margin-top: 8px; }
+  .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .big { font-size: 40px; font-weight: 700; line-height: 1; }
+  .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 8px; }
   .bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
-  .row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
   .pct { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .delta { font-size: 12px; margin-left: 6px; }
-  .up { color: var(--ok); } .down { color: var(--bad); }
-  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 8px; background: rgba(127,127,127,.22); color: var(--hint); margin-right: 6px; }
-  .p1 { color: var(--bad); } .p2 { color: var(--warn); }
-  .empty { color: var(--hint); text-align: center; padding: 30px 10px; }
-  .tabs { display: flex; gap: 6px; margin: 12px 0 4px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 2; }
-  .tabs button { flex: 1; padding: 8px 4px; border: 0; border-radius: 10px; background: var(--card); color: var(--hint); font: inherit; font-size: 13px; }
-  .tabs button.on { background: var(--accent); color: var(--accent-text); }
-  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-  .btns button { flex: 1 1 auto; padding: 8px 10px; border: 1px solid rgba(127,127,127,.35); border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 13px; }
+  .delta { font-size: 12px; margin-left: 6px; } .up { color: var(--ok); } .down { color: var(--bad); }
+  .chip { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 9px; background: var(--line); color: var(--hint); margin-right: 6px; }
+  .chip.p1 { background: rgba(239,100,97,.18); color: var(--bad); } .chip.p2 { background: rgba(240,180,41,.18); color: var(--warn); }
+  .chip.me { background: rgba(165,108,240,.2); color: var(--accent); }
+  .empty { color: var(--hint); text-align: center; padding: 28px 10px; }
+  .tabs { display: flex; gap: 6px; margin: 12px 0 2px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 3; overflow-x: auto; }
+  .tabs button { flex: 1 0 auto; min-height: 42px; padding: 6px 12px; border: 0; border-radius: 12px; background: var(--card); color: var(--hint); font: inherit; font-size: 13px; white-space: nowrap; }
+  .tabs button.on { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .tabs .n { display: inline-block; min-width: 18px; margin-left: 5px; padding: 0 5px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 11px; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .btns button { flex: 1 1 46%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-size: 14px; }
   .btns button.sel { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
   .btns button.yes.sel { background: var(--ok); border-color: var(--ok); color: #08210f; }
   .btns button.no.sel { background: var(--bad); border-color: var(--bad); color: #fff; }
-  textarea { width: 100%; margin-top: 8px; min-height: 60px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35);
-             background: transparent; color: var(--text); font: inherit; font-size: 14px; resize: vertical; }
-  .note { font-size: 12px; color: var(--ok); margin-top: 6px; }
-  .cmd { display: block; width: 100%; text-align: left; padding: 12px 14px; margin-bottom: 8px; border: 0; border-radius: 14px;
-         background: var(--card); color: var(--text); font: inherit; }
-  .cmd.sel { outline: 2px solid var(--accent); }
-  #send { position: fixed; left: 12px; right: 12px; bottom: 12px; padding: 14px; border: 0; border-radius: 14px; background: var(--accent);
+  .note { font-size: 13px; color: var(--ok); margin-top: 8px; min-height: 0; }
+  textarea { width: 100%; margin-top: 10px; min-height: 64px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 14px; resize: vertical; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile { min-height: 92px; text-align: left; padding: 12px; border: 2px solid transparent; border-radius: 16px; background: var(--card); color: var(--text); font: inherit; }
+  .tile b { display: block; font-size: 15px; margin-bottom: 3px; } .tile span { font-size: 12px; color: var(--hint); }
+  .tile.sel { border-color: var(--accent); }
+  .tile.danger b { color: var(--bad); }
+  .step { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line); }
+  .step:first-child { border-top: 0; }
+  .dot { flex: 0 0 10px; height: 10px; margin-top: 6px; border-radius: 5px; background: var(--hint); }
+  .dot.now { background: var(--ok); }
+  .hint { font-size: 13px; color: var(--hint); margin: 4px 2px 12px; }
+  #send { position: fixed; left: 12px; right: 12px; bottom: 12px; min-height: 52px; border: 0; border-radius: 14px; background: var(--accent);
           color: var(--accent-text); font: inherit; font-weight: 600; display: none; z-index: 5; }
-  #toast { position: fixed; left: 12px; right: 12px; bottom: 70px; padding: 10px 12px; border-radius: 12px; background: var(--bad); color: #fff; display: none; z-index: 6; font-size: 13px; }
+  #toast { position: fixed; left: 12px; right: 12px; bottom: 76px; padding: 12px; border-radius: 12px; background: #333; color: #fff; display: none; z-index: 6; font-size: 13px; }
   pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; }
 </style>
 </head>
@@ -71,6 +78,7 @@
     return e;
   }
   function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function tick(n, one, few, many) { var m = n % 100, k = n % 10; return (m > 10 && m < 20) ? many : (k === 1 ? one : (k > 1 && k < 5 ? few : many)); }
 
   function readData() {
     var m = /[#&]d=([A-Za-z0-9_-]+)/.exec(location.hash);
@@ -84,52 +92,37 @@
     } catch (e) { return null; }
   }
 
-  // Данные приходят в адресе после «#» от бота и никуда не уходят. Действия уходят только боту через Telegram (sendData).
+  // Данные приходят в адресе после «#» от бота и никуда не уходят. Действия идут только боту через Telegram.
   var d = readData();
   var head = document.getElementById('head'), tabsEl = document.getElementById('tabs'),
-      view = document.getElementById('view'), sendBtn = document.getElementById('send'),
-      toast = document.getElementById('toast');
+      view = document.getElementById('view'), sendBtn = document.getElementById('send'), toast = document.getElementById('toast');
 
   head.appendChild(el('h1', null, '🟣 Штаб'));
   if (!d) {
-    head.appendChild(el('div', 'sub', 'Открой дашборд из бота кнопкой «Штаб Mini App»: данные приходят оттуда.'));
+    head.appendChild(el('div', 'sub', 'Открой Mini App кнопкой «📱 Штаб» в чате с ботом: данные приходят оттуда.'));
     view.appendChild(el('div', 'empty', 'Нет данных'));
-    // Диагностика для разработчика: какие параметры дошли в адресе (значения не показываем)
     var keys = (location.hash || '').replace(/^#/, '').split('&').map(function (p) { return p.split('=')[0]; }).filter(Boolean);
     view.appendChild(el('div', 'sub', 'Диагностика: в адресе параметры [' + keys.join(', ') + '], длина ' + (location.hash || '').length +
       ', платформа ' + (tg && tg.platform ? tg.platform : 'нет') + ', initData ' + (tg && tg.initData ? 'есть' : 'пусто')));
     return;
   }
-  head.appendChild(el('div', 'sub', 'Обновлено: ' + (d.t || '—')));
+  head.appendChild(el('div', 'sub', 'Обновлено ' + (d.t || '—') + ' · данные обновляются раз в 5 минут'));
 
-  // Очередь действий: ключ -> действие. Отправляется одним нажатием.
-  var queue = {};
-  var comments = {};
-  function qcount() { return Object.keys(queue).length; }
-
-  function setAct(key, act) {
-    if (act) queue[key] = act; else delete queue[key];
-    refreshSend();
-  }
-  // По документации Telegram: у Mini App, открытого кнопкой клавиатуры, initData пустой, и только оттуда работает sendData.
-  // platform === 'unknown' значит страница открыта не в Telegram.
+  // ---- отправка действий боту ----
+  // По документации Telegram: из кнопки клавиатуры работает sendData (initData пуст); из кнопки меню — ссылка t.me/бот?start=…
   var inTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
   var fromKeyboard = inTelegram && !tg.initData;
+  var queue = {}, comments = {};
+  function qcount() { return Object.keys(queue).length; }
+  function showToast(t) { toast.textContent = t; toast.style.display = 'block'; setTimeout(function () { toast.style.display = 'none'; }, 4000); }
+  function setAct(key, act) { if (act) queue[key] = act; else delete queue[key]; refreshSend(); }
   function refreshSend() {
-    var n = qcount();
-    var label = 'Отправить в бота (' + n + ')';
-    if (inTelegram && tg.MainButton) {
-      if (n) { tg.MainButton.setText(label); tg.MainButton.show(); } else tg.MainButton.hide();
-    }
-    // Своя кнопка нужна только вне Telegram; в Telegram работает синяя кнопка самого Telegram
+    var n = qcount(), label = 'Отправить (' + n + ')';
+    if (inTelegram && tg.MainButton) { if (n) { tg.MainButton.setText(label); tg.MainButton.show(); } else tg.MainButton.hide(); }
     sendBtn.textContent = label;
     sendBtn.style.display = (n && !inTelegram) ? 'block' : 'none';
   }
-  function showToast(t) { toast.textContent = t; toast.style.display = 'block'; setTimeout(function () { toast.style.display = 'none'; }, 3500); }
-
-  // Краткая запись действий для ссылки (до 64 знаков A-Za-z0-9_-): y<id> принять, n<id> отклонить, a<id> в архив,
-  // c<id> комментарий (текст бот попросит в чате), m<буква> команда. <id> — номер карточки без «sh-».
-  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p' };
+  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p', modes: 'r' };
   function buildLink() {
     var parts = [];
     Object.keys(queue).forEach(function (k) {
@@ -139,110 +132,113 @@
       else if (a.a === 'comment') parts.push('c' + id);
       else if (a.a === 'cmd' && CMD_LETTER[a.c]) parts.push('m' + CMD_LETTER[a.c]);
     });
-    var payload = 'd_' + parts.join('_');
-    return payload.length <= 64 ? payload : null;
+    var p = 'd_' + parts.join('_');
+    return p.length <= 64 ? p : null;
   }
-
   function submit() {
     var acts = Object.keys(queue).map(function (k) { return queue[k]; });
     if (!acts.length) return;
     var json = JSON.stringify({ v: 1, acts: acts });
     if (new TextEncoder().encode(json).length > 4000) { showToast('Слишком много действий за раз: отправь часть, потом остальное.'); return; }
-    if (fromKeyboard) { tg.sendData(json); return; }  // после отправки Telegram сам закрывает Mini App
+    if (fromKeyboard) { tg.sendData(json); return; }
     if (inTelegram) {
-      // Запуск из кнопки меню: sendData недоступен, передаём действия ссылкой t.me/бот?start=..., бот получит «/start d_…»
       if (!d.b) { showToast('Бот не передал своё имя: открой Mini App из чата с ботом ещё раз.'); return; }
-      var payload = buildLink();
-      if (!payload) { showToast('Слишком много действий за раз: отправь часть, потом остальное.'); return; }
-      tg.openTelegramLink('https://t.me/' + d.b + '?start=' + payload);
+      var p = buildLink();
+      if (!p) { showToast('Слишком много действий за раз: отправь часть, потом остальное.'); return; }
+      tg.openTelegramLink('https://t.me/' + d.b + '?start=' + p);
       return;
     }
     clear(view); view.appendChild(el('div', 'card', 'Страница открыта вне Telegram, отправка недоступна. Действия:')); view.appendChild(el('pre', null, json));
   }
   sendBtn.addEventListener('click', submit);
-  if (tg && tg.MainButton) tg.MainButton.onClick(submit);
+  if (inTelegram && tg.MainButton) tg.MainButton.onClick(submit);
 
-  var tab = 'over';
-  var TABS = [['over', 'Обзор'], ['dec', 'Решения' + (d.ask && d.ask.length ? ' ' + d.ask.length : '')], ['cmd', 'Команды'], ['arc', 'Архив']];
+  // ---- вкладки ----
+  var tab = 'home';
+  var askN = d.ask ? d.ask.length : 0;
+  var TABS = [['home', '🏠 Главное'], ['dec', '🗳 Решения'], ['work', '🛠 Работа'], ['sys', '⚙️ Система'], ['arc', '🗄 Архив']];
   function drawTabs() {
     clear(tabsEl);
     TABS.forEach(function (t) {
       var b = el('button', tab === t[0] ? 'on' : '', t[1]);
-      b.addEventListener('click', function () { tab = t[0]; drawTabs(); draw(); });
+      if (t[0] === 'dec' && askN) b.appendChild(el('span', 'n', String(askN)));
+      b.addEventListener('click', function () { go(t[0]); });
       tabsEl.appendChild(b);
     });
   }
+  function go(t) { tab = t; drawTabs(); draw(); window.scrollTo(0, 0); }
 
-  function bar(pct) {
+  function bar(pct, color) {
     var b = el('div', 'bar'), f = el('i');
     f.style.width = Math.max(0, Math.min(100, pct)) + '%';
+    if (color) f.style.background = color;
     b.appendChild(f); return b;
   }
+  function limColor(p) { return p >= 90 ? 'var(--bad)' : (p >= 80 ? 'var(--warn)' : 'var(--ok)'); }
+  function prioChip(p) { return el('span', 'chip p' + (p || 2), p === 1 ? 'срочно' : (p === 2 ? 'важно' : 'обычно')); }
+  function ownerChip(o) { return el('span', 'chip' + (o === 'claude' || o === 'roxy' ? ' me' : ''), o === 'claude' ? 'Клод' : (o === 'roxy' ? 'ROXY' : (o === 'victoria' ? 'ты' : (o || 'не назначено')))); }
 
-  function overview() {
-    var sum = el('div', 'card'), big = el('div', 'big');
-    big.appendChild(el('b', null, (d.all || 0) + '%'));
-    big.appendChild(el('span', 'sub', 'общая готовность'));
-    sum.appendChild(big); sum.appendChild(bar(d.all || 0));
-    if (d.cards) sum.appendChild(el('div', 'sub', 'Карточки: закрыто ' + d.cards[1] + ' из ' + d.cards[0] +
-      (d.cards[2] ? ', в работе ' + d.cards[2] : '') + (d.cards[3] ? ', ждут проверки ' + d.cards[3] : '')));
+  // ---- Главное ----
+  function home() {
+    var sum = el('div', 'card'), row = el('div', 'row');
+    row.appendChild(el('span', 'big', (d.all || 0) + '%'));
+    row.appendChild(el('span', 'sub', 'общая готовность Штаба'));
+    sum.appendChild(row); sum.appendChild(bar(d.all || 0));
+    if (d.cards) sum.appendChild(el('div', 'sub', 'Задач: ' + d.cards[0] + ', сделано ' + d.cards[1] + (d.cards[2] ? ', в работе ' + d.cards[2] : '')));
     view.appendChild(sum);
-    // Лимиты агентов: [название, процент или null, пояснение]
+
+    if (askN) {
+      var a = el('div', 'card');
+      a.appendChild(el('div', null, '🗳 Ждут твоего решения: ' + askN));
+      a.appendChild(el('div', 'sub', 'Принять, отклонить или прокомментировать можно в одну минуту.'));
+      var go1 = el('div', 'btns'), b1 = el('button', null, 'Открыть решения →');
+      b1.addEventListener('click', function () { go('dec'); }); go1.appendChild(b1); a.appendChild(go1);
+      view.appendChild(a);
+    }
+
     if (d.lim && d.lim.length) {
-      view.appendChild(el('h2', null, 'Лимиты и связь'));
+      view.appendChild(el('h2', null, 'Кто на связи'));
       d.lim.forEach(function (x) {
         var c = el('div', 'card'), r = el('div', 'row');
         r.appendChild(el('span', null, x[0]));
         r.appendChild(el('span', 'sub', (x[1] !== null ? x[1] + '% · ' : '') + (x[2] || '')));
         c.appendChild(r);
-        if (x[1] !== null) {
-          var b = bar(x[1]);
-          b.firstChild.style.background = x[1] >= 90 ? 'var(--bad)' : (x[1] >= 80 ? 'var(--warn)' : 'var(--ok)');
-          c.appendChild(b);
-        }
+        if (x[1] !== null) c.appendChild(bar(x[1], limColor(x[1])));
         view.appendChild(c);
       });
+      view.appendChild(el('div', 'hint', 'Проценты — сколько лимита израсходовано, «откат» — когда он обновится.'));
     }
+
     if (d.dirs && d.dirs.length) {
-      view.appendChild(el('h2', null, 'Направления'));
+      view.appendChild(el('h2', null, 'Как идёт по направлениям'));
       d.dirs.forEach(function (x) {
         var c = el('div', 'card'), r = el('div', 'row');
         r.appendChild(el('span', null, x[0]));
         var p = el('span', 'pct', x[1] + '%');
         if (x.length > 2 && x[2] !== null && x[2] !== x[1]) {
           var diff = x[1] - x[2];
-          p.appendChild(el('span', 'delta ' + (diff > 0 ? 'up' : 'down'), (diff > 0 ? '+' : '') + diff));
+          p.appendChild(el('span', 'delta ' + (diff > 0 ? 'up' : 'down'), (diff > 0 ? '▲ +' : '▼ ') + diff));
         }
         r.appendChild(p); c.appendChild(r); c.appendChild(bar(x[1])); view.appendChild(c);
       });
     }
-    if (d.top && d.top.length) {
-      view.appendChild(el('h2', null, 'Делаем сейчас'));
-      d.top.forEach(function (x) { view.appendChild(cardItem(x, false)); });
-    }
   }
 
-  function meta(x) {
-    var m = el('div');
-    m.appendChild(el('span', 'tag p' + (x[3] || 2), 'P' + (x[3] || 2)));
-    m.appendChild(el('span', 'tag', x[2] || '—'));
-    m.appendChild(el('span', 'sub', x[0]));
-    return m;
-  }
-
-  // Карточка с кнопками: принять / отклонить (только для решений), комментарий, в архив.
+  // ---- карточка с кнопками ----
   function cardItem(x, decision) {
-    var id = x[0], c = el('div', 'card');
-    c.appendChild(meta(x)); c.appendChild(el('div', null, x[1]));
-    var btns = el('div', 'btns'), ta = null, note = el('div', 'note');
+    var id = x[0], c = el('div', 'card'), inMenu = inTelegram && !fromKeyboard;
+    var top = el('div'); top.appendChild(prioChip(x[3])); top.appendChild(ownerChip(x[2])); top.appendChild(el('span', 'sub', id));
+    c.appendChild(top);
+    c.appendChild(el('div', null, x[1]));
+    var btns = el('div', 'btns'), ta = null, note = el('div', 'note'), yes = null, no = null;
     function paint() {
       var v = queue['v:' + id], a = queue['a:' + id];
-      yes && yes.classList.toggle('sel', !!v && v.v === 'yes');
-      no && no.classList.toggle('sel', !!v && v.v === 'no');
+      if (yes) yes.classList.toggle('sel', !!v && v.v === 'yes');
+      if (no) no.classList.toggle('sel', !!v && v.v === 'no');
       arc.classList.toggle('sel', !!a);
-      note.textContent = (v ? (v.v === 'yes' ? '✅ принято' : '❌ отклонено') : '') + (a ? ' 🗄 в архив' : '') + (queue['c:' + id] ? (inTelegram && !fromKeyboard ? ' 💬 текст напишешь в чате' : ' 💬') : '');
+      note.textContent = [v ? (v.v === 'yes' ? '✅ принято' : '❌ отклонено') : '', a ? '🗄 уйдёт в архив' : '',
+        queue['c:' + id] ? (inMenu ? '💬 текст комментария напишешь в чате' : '💬 комментарий добавлен') : ''].filter(Boolean).join(' · ');
     }
-    var yes = null, no = null;
     if (decision) {
       yes = el('button', 'yes', '✅ Принять'); no = el('button', 'no', '❌ Отклонить');
       yes.addEventListener('click', function () { var cur = queue['v:' + id]; setAct('v:' + id, cur && cur.v === 'yes' ? null : { a: 'vote', id: id, v: 'yes' }); paint(); });
@@ -251,10 +247,8 @@
     }
     var cm = el('button', null, '💬 Комментарий'), arc = el('button', null, '🗄 В архив');
     cm.addEventListener('click', function () {
-      if (inTelegram && !fromKeyboard) {  // запуск из кнопки меню: текст комментария бот попросит написать в чате
-        setAct('c:' + id, queue['c:' + id] ? null : { a: 'comment', id: id, t: '' }); paint(); return;
-      }
-      if (ta) { return; }
+      if (inMenu) { setAct('c:' + id, queue['c:' + id] ? null : { a: 'comment', id: id, t: '' }); paint(); return; }
+      if (ta) return;
       ta = el('textarea'); ta.placeholder = 'Твой комментарий к ' + id; ta.value = comments[id] || '';
       ta.addEventListener('input', function () {
         comments[id] = ta.value.trim();
@@ -269,36 +263,73 @@
   }
 
   function decisions() {
-    if (!d.ask || !d.ask.length) { view.appendChild(el('div', 'empty', 'Решений, которые ждут тебя, нет')); return; }
-    view.appendChild(el('div', 'sub', 'Отметь и отправь одним нажатием внизу. Твой голос ставится только отсюда.'));
+    if (!askN) { view.appendChild(el('div', 'empty', '🎉 Ничего не ждёт твоего решения')); return; }
+    view.appendChild(el('div', 'hint', 'Отметь нужное у каждой карточки и нажми «Отправить» внизу. «Принять» — делаем, «Отклонить» — не делаем, «В архив» — убрать с доски. Твой голос ставится только отсюда.'));
     d.ask.forEach(function (x) { view.appendChild(cardItem(x, true)); });
   }
 
-  var CMDS = [['status', '📊 Статус системы'], ['limits', '🚦 Лимиты и связь'], ['board', '📋 Доска задач'], ['orders', '📥 Проверить ящик заказов'], ['pause', '🛑 Стоп / Пауза']];
-  function commands() {
-    view.appendChild(el('div', 'sub', 'Команда уйдёт боту, ответ придёт в чат.'));
-    CMDS.forEach(function (c) {
-      var b = el('button', 'cmd' + (queue['m:' + c[0]] ? ' sel' : ''), c[1]);
-      b.addEventListener('click', function () { setAct('m:' + c[0], queue['m:' + c[0]] ? null : { a: 'cmd', c: c[0] }); b.classList.toggle('sel'); });
-      view.appendChild(b);
-    });
+  // ---- Работа ----
+  function work() {
+    var doing = (d.top || []).filter(function (x) { return x[4] === 'p'; });
+    var next = (d.top || []).filter(function (x) { return x[4] !== 'p'; });
+    function block(title, items, now) {
+      view.appendChild(el('h2', null, title));
+      if (!items.length) { view.appendChild(el('div', 'card sub', 'Пусто')); return; }
+      var c = el('div', 'card');
+      items.forEach(function (x) {
+        var s = el('div', 'step'); s.appendChild(el('span', 'dot' + (now ? ' now' : '')));
+        var t = el('div'); var m = el('div'); m.appendChild(ownerChip(x[2])); m.appendChild(prioChip(x[3])); m.appendChild(el('span', 'sub', x[0]));
+        t.appendChild(m); t.appendChild(el('div', null, x[1])); s.appendChild(t); c.appendChild(s);
+      });
+      view.appendChild(c);
+    }
+    block('Делается сейчас', doing, true);
+    block('Следующие по важности', next, false);
+    view.appendChild(el('div', 'hint', 'Показаны самые важные. Полная доска — на вкладке «Система», плитка «Доска задач».'));
   }
 
+  // ---- Система ----
+  var TILES = [
+    ['status', '📊', 'Статус системы', 'Что запущено, очередь, память'],
+    ['board', '📋', 'Доска задач', 'Сводка: что в работе и что ждёт'],
+    ['orders', '📥', 'Заказы с бирж', 'Что пришло в ящик заказов'],
+    ['modes', '🪟', 'Режимы связи', 'Окна, фон или авто для Клода и ROXY'],
+    ['limits', '🚦', 'Лимиты подробно', 'Остаток и время отката'],
+    ['pause', '🛑', 'Стоп / пауза', 'Отменить очередь задач', true]
+  ];
+  function system() {
+    view.appendChild(el('div', 'hint', 'Нажми плитку и «Отправить»: ответ придёт в чат с ботом. Можно выбрать несколько.'));
+    var g = el('div', 'grid');
+    TILES.forEach(function (t) {
+      var b = el('button', 'tile' + (t[4] ? ' danger' : '') + (queue['m:' + t[0]] ? ' sel' : ''));
+      b.appendChild(el('b', null, t[1] + ' ' + t[2])); b.appendChild(el('span', null, t[3]));
+      b.addEventListener('click', function () {
+        var on = !queue['m:' + t[0]];
+        setAct('m:' + t[0], on ? { a: 'cmd', c: t[0] } : null); b.classList.toggle('sel', on);
+      });
+      g.appendChild(b);
+    });
+    view.appendChild(g);
+    view.appendChild(el('h2', null, 'Куда пишешь'));
+    view.appendChild(el('div', 'card sub', 'Получатель сообщений выбирается кнопкой «🎯» на клавиатуре чата. Голос и скриншот — тоже там.'));
+  }
+
+  // ---- Архив ----
   function archive() {
     if (!d.arch || !d.arch.length) { view.appendChild(el('div', 'empty', 'Архив пуст')); return; }
     view.appendChild(el('h2', null, 'Недавно закрыто'));
     var c = el('div', 'card');
     d.arch.forEach(function (x) {
-      var r = el('div'); r.style.padding = '6px 0';
-      r.appendChild(el('span', 'tag', '✓ ' + x[0])); r.appendChild(el('span', null, x[1])); c.appendChild(r);
+      var s = el('div', 'step'); s.appendChild(el('span', 'dot now'));
+      var t = el('div'); t.appendChild(el('span', 'sub', x[0])); t.appendChild(el('div', null, x[1])); s.appendChild(t); c.appendChild(s);
     });
     view.appendChild(c);
-    view.appendChild(el('div', 'sub', 'Полный архив и история решений лежат на доске: в боте кнопка «Доска задач».'));
+    view.appendChild(el('div', 'hint', 'Показаны последние. Вся история хранится на доске.'));
   }
 
   function draw() {
     clear(view);
-    if (tab === 'over') overview(); else if (tab === 'dec') decisions(); else if (tab === 'cmd') commands(); else archive();
+    if (tab === 'home') home(); else if (tab === 'dec') decisions(); else if (tab === 'work') work(); else if (tab === 'sys') system(); else archive();
   }
   drawTabs(); draw(); refreshSend();
 })();
