@@ -127,6 +127,22 @@
   }
   function showToast(t) { toast.textContent = t; toast.style.display = 'block'; setTimeout(function () { toast.style.display = 'none'; }, 3500); }
 
+  // Краткая запись действий для ссылки (до 64 знаков A-Za-z0-9_-): y<id> принять, n<id> отклонить, a<id> в архив,
+  // c<id> комментарий (текст бот попросит в чате), m<буква> команда. <id> — номер карточки без «sh-».
+  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p' };
+  function buildLink() {
+    var parts = [];
+    Object.keys(queue).forEach(function (k) {
+      var a = queue[k], id = String(a.id || '').replace(/^sh-/, '');
+      if (a.a === 'vote') parts.push((a.v === 'yes' ? 'y' : 'n') + id);
+      else if (a.a === 'archive') parts.push('a' + id);
+      else if (a.a === 'comment') parts.push('c' + id);
+      else if (a.a === 'cmd' && CMD_LETTER[a.c]) parts.push('m' + CMD_LETTER[a.c]);
+    });
+    var payload = 'd_' + parts.join('_');
+    return payload.length <= 64 ? payload : null;
+  }
+
   function submit() {
     var acts = Object.keys(queue).map(function (k) { return queue[k]; });
     if (!acts.length) return;
@@ -134,7 +150,11 @@
     if (new TextEncoder().encode(json).length > 4000) { showToast('Слишком много действий за раз: отправь часть, потом остальное.'); return; }
     if (fromKeyboard) { tg.sendData(json); return; }  // после отправки Telegram сам закрывает Mini App
     if (inTelegram) {
-      showToast('Открой Mini App кнопкой «📱 Открыть Штаб Mini App» внизу чата с ботом: только оттуда можно отправлять решения.');
+      // Запуск из кнопки меню: sendData недоступен, передаём действия ссылкой t.me/бот?start=..., бот получит «/start d_…»
+      if (!d.b) { showToast('Бот не передал своё имя: открой Mini App из чата с ботом ещё раз.'); return; }
+      var payload = buildLink();
+      if (!payload) { showToast('Слишком много действий за раз: отправь часть, потом остальное.'); return; }
+      tg.openTelegramLink('https://t.me/' + d.b + '?start=' + payload);
       return;
     }
     clear(view); view.appendChild(el('div', 'card', 'Страница открыта вне Telegram, отправка недоступна. Действия:')); view.appendChild(el('pre', null, json));
@@ -220,7 +240,7 @@
       yes && yes.classList.toggle('sel', !!v && v.v === 'yes');
       no && no.classList.toggle('sel', !!v && v.v === 'no');
       arc.classList.toggle('sel', !!a);
-      note.textContent = (v ? (v.v === 'yes' ? '✅ принято' : '❌ отклонено') : '') + (a ? ' 🗄 в архив' : '') + (queue['c:' + id] ? ' 💬' : '');
+      note.textContent = (v ? (v.v === 'yes' ? '✅ принято' : '❌ отклонено') : '') + (a ? ' 🗄 в архив' : '') + (queue['c:' + id] ? (inTelegram && !fromKeyboard ? ' 💬 текст напишешь в чате' : ' 💬') : '');
     }
     var yes = null, no = null;
     if (decision) {
@@ -231,6 +251,9 @@
     }
     var cm = el('button', null, '💬 Комментарий'), arc = el('button', null, '🗄 В архив');
     cm.addEventListener('click', function () {
+      if (inTelegram && !fromKeyboard) {  // запуск из кнопки меню: текст комментария бот попросит написать в чате
+        setAct('c:' + id, queue['c:' + id] ? null : { a: 'comment', id: id, t: '' }); paint(); return;
+      }
       if (ta) { return; }
       ta = el('textarea'); ta.placeholder = 'Твой комментарий к ' + id; ta.value = comments[id] || '';
       ta.addEventListener('input', function () {
