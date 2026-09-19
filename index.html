@@ -97,7 +97,7 @@
     // Диагностика для разработчика: какие параметры дошли в адресе (значения не показываем)
     var keys = (location.hash || '').replace(/^#/, '').split('&').map(function (p) { return p.split('=')[0]; }).filter(Boolean);
     view.appendChild(el('div', 'sub', 'Диагностика: в адресе параметры [' + keys.join(', ') + '], длина ' + (location.hash || '').length +
-      ', Telegram ' + (tg && tg.initData ? 'есть' : 'нет')));
+      ', платформа ' + (tg && tg.platform ? tg.platform : 'нет') + ', initData ' + (tg && tg.initData ? 'есть' : 'пусто')));
     return;
   }
   head.appendChild(el('div', 'sub', 'Обновлено: ' + (d.t || '—')));
@@ -111,14 +111,19 @@
     if (act) queue[key] = act; else delete queue[key];
     refreshSend();
   }
+  // По документации Telegram: у Mini App, открытого кнопкой клавиатуры, initData пустой, и только оттуда работает sendData.
+  // platform === 'unknown' значит страница открыта не в Telegram.
+  var inTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
+  var fromKeyboard = inTelegram && !tg.initData;
   function refreshSend() {
     var n = qcount();
     var label = 'Отправить в бота (' + n + ')';
-    if (tg && tg.MainButton) {
+    if (inTelegram && tg.MainButton) {
       if (n) { tg.MainButton.setText(label); tg.MainButton.show(); } else tg.MainButton.hide();
     }
+    // Своя кнопка нужна только вне Telegram; в Telegram работает синяя кнопка самого Telegram
     sendBtn.textContent = label;
-    sendBtn.style.display = (n && !(tg && tg.MainButton && tg.initData)) ? 'block' : 'none';
+    sendBtn.style.display = (n && !inTelegram) ? 'block' : 'none';
   }
   function showToast(t) { toast.textContent = t; toast.style.display = 'block'; setTimeout(function () { toast.style.display = 'none'; }, 3500); }
 
@@ -127,8 +132,12 @@
     if (!acts.length) return;
     var json = JSON.stringify({ v: 1, acts: acts });
     if (new TextEncoder().encode(json).length > 4000) { showToast('Слишком много действий за раз: отправь часть, потом остальное.'); return; }
-    if (tg && tg.sendData && tg.initData) { tg.sendData(json); }
-    else { clear(view); view.appendChild(el('div', 'card', 'Открыто вне Telegram, отправка недоступна. Действия:')); var p = el('pre', null, json); view.appendChild(p); }
+    if (fromKeyboard) { tg.sendData(json); return; }  // после отправки Telegram сам закрывает Mini App
+    if (inTelegram) {
+      showToast('Открой Mini App кнопкой «📱 Открыть Штаб Mini App» внизу чата с ботом: только оттуда можно отправлять решения.');
+      return;
+    }
+    clear(view); view.appendChild(el('div', 'card', 'Страница открыта вне Telegram, отправка недоступна. Действия:')); view.appendChild(el('pre', null, json));
   }
   sendBtn.addEventListener('click', submit);
   if (tg && tg.MainButton) tg.MainButton.onClick(submit);
