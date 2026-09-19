@@ -94,6 +94,10 @@
   if (!d) {
     head.appendChild(el('div', 'sub', 'Открой дашборд из бота кнопкой «Штаб Mini App»: данные приходят оттуда.'));
     view.appendChild(el('div', 'empty', 'Нет данных'));
+    // Диагностика для разработчика: какие параметры дошли в адресе (значения не показываем)
+    var keys = (location.hash || '').replace(/^#/, '').split('&').map(function (p) { return p.split('=')[0]; }).filter(Boolean);
+    view.appendChild(el('div', 'sub', 'Диагностика: в адресе параметры [' + keys.join(', ') + '], длина ' + (location.hash || '').length +
+      ', Telegram ' + (tg && tg.initData ? 'есть' : 'нет')));
     return;
   }
   head.appendChild(el('div', 'sub', 'Обновлено: ' + (d.t || '—')));
