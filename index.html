@@ -12,15 +12,14 @@
     --text: var(--tg-theme-text-color, #f2eff8);
     --hint: var(--tg-theme-hint-color, #9a94ab);
     --accent: var(--tg-theme-button-color, #a56cf0);
-    --ok: #4cc38a;
-    --warn: #f0b429;
-    --bad: #ef6461;
+    --accent-text: var(--tg-theme-button-text-color, #fff);
+    --ok: #4cc38a; --warn: #f0b429; --bad: #ef6461;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 16px 14px 32px; background: var(--bg); color: var(--text);
+  body { margin: 0; padding: 12px 12px 96px; background: var(--bg); color: var(--text);
          font: 15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
   h1 { font-size: 20px; margin: 0 0 2px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--hint); margin: 22px 0 8px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--hint); margin: 18px 0 8px; }
   .sub { color: var(--hint); font-size: 13px; }
   .card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
   .big { display: flex; align-items: baseline; gap: 10px; }
@@ -34,12 +33,32 @@
   .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 8px; background: rgba(127,127,127,.22); color: var(--hint); margin-right: 6px; }
   .p1 { color: var(--bad); } .p2 { color: var(--warn); }
   .empty { color: var(--hint); text-align: center; padding: 30px 10px; }
-  .item { padding: 8px 0; border-top: 1px solid rgba(127,127,127,.18); }
-  .item:first-child { border-top: 0; }
+  .tabs { display: flex; gap: 6px; margin: 12px 0 4px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 2; }
+  .tabs button { flex: 1; padding: 8px 4px; border: 0; border-radius: 10px; background: var(--card); color: var(--hint); font: inherit; font-size: 13px; }
+  .tabs button.on { background: var(--accent); color: var(--accent-text); }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .btns button { flex: 1 1 auto; padding: 8px 10px; border: 1px solid rgba(127,127,127,.35); border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 13px; }
+  .btns button.sel { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
+  .btns button.yes.sel { background: var(--ok); border-color: var(--ok); color: #08210f; }
+  .btns button.no.sel { background: var(--bad); border-color: var(--bad); color: #fff; }
+  textarea { width: 100%; margin-top: 8px; min-height: 60px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35);
+             background: transparent; color: var(--text); font: inherit; font-size: 14px; resize: vertical; }
+  .note { font-size: 12px; color: var(--ok); margin-top: 6px; }
+  .cmd { display: block; width: 100%; text-align: left; padding: 12px 14px; margin-bottom: 8px; border: 0; border-radius: 14px;
+         background: var(--card); color: var(--text); font: inherit; }
+  .cmd.sel { outline: 2px solid var(--accent); }
+  #send { position: fixed; left: 12px; right: 12px; bottom: 12px; padding: 14px; border: 0; border-radius: 14px; background: var(--accent);
+          color: var(--accent-text); font: inherit; font-weight: 600; display: none; z-index: 5; }
+  #toast { position: fixed; left: 12px; right: 12px; bottom: 70px; padding: 10px 12px; border-radius: 12px; background: var(--bad); color: #fff; display: none; z-index: 6; font-size: 13px; }
+  pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; }
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="head"></div>
+<div id="tabs" class="tabs"></div>
+<div id="view"></div>
+<button id="send"></button>
+<div id="toast"></div>
 <script>
 (function () {
   var tg = window.Telegram && window.Telegram.WebApp;
@@ -51,6 +70,7 @@
     if (text !== undefined && text !== null) e.textContent = text;
     return e;
   }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
 
   function readData() {
     var m = /[#&]d=([A-Za-z0-9_-]+)/.exec(location.hash);
@@ -64,75 +84,171 @@
     } catch (e) { return null; }
   }
 
-  // Данные приходят в адресе после «#» от бота и никуда не отправляются: страница статичная и ничего не хранит.
+  // Данные приходят в адресе после «#» от бота и никуда не уходят. Действия уходят только боту через Telegram (sendData).
   var d = readData();
-  var app = document.getElementById('app');
+  var head = document.getElementById('head'), tabsEl = document.getElementById('tabs'),
+      view = document.getElementById('view'), sendBtn = document.getElementById('send'),
+      toast = document.getElementById('toast');
 
-  var head = el('div');
   head.appendChild(el('h1', null, '🟣 Штаб'));
-  app.appendChild(head);
-
   if (!d) {
-    head.appendChild(el('div', 'sub', 'Открой дашборд из бота кнопкой «Дашборд»: данные приходят оттуда.'));
-    app.appendChild(el('div', 'empty', 'Нет данных'));
+    head.appendChild(el('div', 'sub', 'Открой дашборд из бота кнопкой «Штаб Mini App»: данные приходят оттуда.'));
+    view.appendChild(el('div', 'empty', 'Нет данных'));
     return;
   }
-
   head.appendChild(el('div', 'sub', 'Обновлено: ' + (d.t || '—')));
 
-  // Общий прогресс
-  var sum = el('div', 'card');
-  var big = el('div', 'big');
-  big.appendChild(el('b', null, (d.all || 0) + '%'));
-  big.appendChild(el('span', 'sub', 'общая готовность'));
-  sum.appendChild(big);
-  var bar = el('div', 'bar'), fill = el('i');
-  fill.style.width = Math.max(0, Math.min(100, d.all || 0)) + '%';
-  bar.appendChild(fill); sum.appendChild(bar);
-  if (d.cards) {
-    sum.appendChild(el('div', 'sub', 'Карточки: закрыто ' + d.cards[1] + ' из ' + d.cards[0] +
+  // Очередь действий: ключ -> действие. Отправляется одним нажатием.
+  var queue = {};
+  var comments = {};
+  function qcount() { return Object.keys(queue).length; }
+
+  function setAct(key, act) {
+    if (act) queue[key] = act; else delete queue[key];
+    refreshSend();
+  }
+  function refreshSend() {
+    var n = qcount();
+    var label = 'Отправить в бота (' + n + ')';
+    if (tg && tg.MainButton) {
+      if (n) { tg.MainButton.setText(label); tg.MainButton.show(); } else tg.MainButton.hide();
+    }
+    sendBtn.textContent = label;
+    sendBtn.style.display = (n && !(tg && tg.MainButton && tg.initData)) ? 'block' : 'none';
+  }
+  function showToast(t) { toast.textContent = t; toast.style.display = 'block'; setTimeout(function () { toast.style.display = 'none'; }, 3500); }
+
+  function submit() {
+    var acts = Object.keys(queue).map(function (k) { return queue[k]; });
+    if (!acts.length) return;
+    var json = JSON.stringify({ v: 1, acts: acts });
+    if (new TextEncoder().encode(json).length > 4000) { showToast('Слишком много действий за раз: отправь часть, потом остальное.'); return; }
+    if (tg && tg.sendData && tg.initData) { tg.sendData(json); }
+    else { clear(view); view.appendChild(el('div', 'card', 'Открыто вне Telegram, отправка недоступна. Действия:')); var p = el('pre', null, json); view.appendChild(p); }
+  }
+  sendBtn.addEventListener('click', submit);
+  if (tg && tg.MainButton) tg.MainButton.onClick(submit);
+
+  var tab = 'over';
+  var TABS = [['over', 'Обзор'], ['dec', 'Решения' + (d.ask && d.ask.length ? ' ' + d.ask.length : '')], ['cmd', 'Команды'], ['arc', 'Архив']];
+  function drawTabs() {
+    clear(tabsEl);
+    TABS.forEach(function (t) {
+      var b = el('button', tab === t[0] ? 'on' : '', t[1]);
+      b.addEventListener('click', function () { tab = t[0]; drawTabs(); draw(); });
+      tabsEl.appendChild(b);
+    });
+  }
+
+  function bar(pct) {
+    var b = el('div', 'bar'), f = el('i');
+    f.style.width = Math.max(0, Math.min(100, pct)) + '%';
+    b.appendChild(f); return b;
+  }
+
+  function overview() {
+    var sum = el('div', 'card'), big = el('div', 'big');
+    big.appendChild(el('b', null, (d.all || 0) + '%'));
+    big.appendChild(el('span', 'sub', 'общая готовность'));
+    sum.appendChild(big); sum.appendChild(bar(d.all || 0));
+    if (d.cards) sum.appendChild(el('div', 'sub', 'Карточки: закрыто ' + d.cards[1] + ' из ' + d.cards[0] +
       (d.cards[2] ? ', в работе ' + d.cards[2] : '') + (d.cards[3] ? ', ждут проверки ' + d.cards[3] : '')));
+    view.appendChild(sum);
+    if (d.dirs && d.dirs.length) {
+      view.appendChild(el('h2', null, 'Направления'));
+      d.dirs.forEach(function (x) {
+        var c = el('div', 'card'), r = el('div', 'row');
+        r.appendChild(el('span', null, x[0]));
+        var p = el('span', 'pct', x[1] + '%');
+        if (x.length > 2 && x[2] !== null && x[2] !== x[1]) {
+          var diff = x[1] - x[2];
+          p.appendChild(el('span', 'delta ' + (diff > 0 ? 'up' : 'down'), (diff > 0 ? '+' : '') + diff));
+        }
+        r.appendChild(p); c.appendChild(r); c.appendChild(bar(x[1])); view.appendChild(c);
+      });
+    }
+    if (d.top && d.top.length) {
+      view.appendChild(el('h2', null, 'Делаем сейчас'));
+      d.top.forEach(function (x) { view.appendChild(cardItem(x, false)); });
+    }
   }
-  app.appendChild(sum);
 
-  // Направления: [название, процент, было]
-  if (d.dirs && d.dirs.length) {
-    app.appendChild(el('h2', null, 'Направления'));
-    d.dirs.forEach(function (x) {
-      var c = el('div', 'card'), r = el('div', 'row');
-      r.appendChild(el('span', null, x[0]));
-      var p = el('span', 'pct', x[1] + '%');
-      if (x.length > 2 && x[2] !== null && x[2] !== x[1]) {
-        var diff = x[1] - x[2];
-        p.appendChild(el('span', 'delta ' + (diff > 0 ? 'up' : 'down'), (diff > 0 ? '+' : '') + diff));
-      }
-      r.appendChild(p); c.appendChild(r);
-      var b = el('div', 'bar'), f = el('i');
-      f.style.width = Math.max(0, Math.min(100, x[1])) + '%';
-      b.appendChild(f); c.appendChild(b);
-      app.appendChild(c);
+  function meta(x) {
+    var m = el('div');
+    m.appendChild(el('span', 'tag p' + (x[3] || 2), 'P' + (x[3] || 2)));
+    m.appendChild(el('span', 'tag', x[2] || '—'));
+    m.appendChild(el('span', 'sub', x[0]));
+    return m;
+  }
+
+  // Карточка с кнопками: принять / отклонить (только для решений), комментарий, в архив.
+  function cardItem(x, decision) {
+    var id = x[0], c = el('div', 'card');
+    c.appendChild(meta(x)); c.appendChild(el('div', null, x[1]));
+    var btns = el('div', 'btns'), ta = null, note = el('div', 'note');
+    function paint() {
+      var v = queue['v:' + id], a = queue['a:' + id];
+      yes && yes.classList.toggle('sel', !!v && v.v === 'yes');
+      no && no.classList.toggle('sel', !!v && v.v === 'no');
+      arc.classList.toggle('sel', !!a);
+      note.textContent = (v ? (v.v === 'yes' ? '✅ принято' : '❌ отклонено') : '') + (a ? ' 🗄 в архив' : '') + (queue['c:' + id] ? ' 💬' : '');
+    }
+    var yes = null, no = null;
+    if (decision) {
+      yes = el('button', 'yes', '✅ Принять'); no = el('button', 'no', '❌ Отклонить');
+      yes.addEventListener('click', function () { var cur = queue['v:' + id]; setAct('v:' + id, cur && cur.v === 'yes' ? null : { a: 'vote', id: id, v: 'yes' }); paint(); });
+      no.addEventListener('click', function () { var cur = queue['v:' + id]; setAct('v:' + id, cur && cur.v === 'no' ? null : { a: 'vote', id: id, v: 'no' }); paint(); });
+      btns.appendChild(yes); btns.appendChild(no);
+    }
+    var cm = el('button', null, '💬 Комментарий'), arc = el('button', null, '🗄 В архив');
+    cm.addEventListener('click', function () {
+      if (ta) { return; }
+      ta = el('textarea'); ta.placeholder = 'Твой комментарий к ' + id; ta.value = comments[id] || '';
+      ta.addEventListener('input', function () {
+        comments[id] = ta.value.trim();
+        setAct('c:' + id, comments[id] ? { a: 'comment', id: id, t: comments[id].slice(0, 500) } : null); paint();
+      });
+      c.insertBefore(ta, note); ta.focus();
+    });
+    arc.addEventListener('click', function () { setAct('a:' + id, queue['a:' + id] ? null : { a: 'archive', id: id }); paint(); });
+    btns.appendChild(cm); btns.appendChild(arc);
+    c.appendChild(btns); c.appendChild(note); paint();
+    return c;
+  }
+
+  function decisions() {
+    if (!d.ask || !d.ask.length) { view.appendChild(el('div', 'empty', 'Решений, которые ждут тебя, нет')); return; }
+    view.appendChild(el('div', 'sub', 'Отметь и отправь одним нажатием внизу. Твой голос ставится только отсюда.'));
+    d.ask.forEach(function (x) { view.appendChild(cardItem(x, true)); });
+  }
+
+  var CMDS = [['status', '📊 Статус системы'], ['board', '📋 Доска задач'], ['orders', '📥 Проверить ящик заказов'], ['pause', '🛑 Стоп / Пауза']];
+  function commands() {
+    view.appendChild(el('div', 'sub', 'Команда уйдёт боту, ответ придёт в чат.'));
+    CMDS.forEach(function (c) {
+      var b = el('button', 'cmd' + (queue['m:' + c[0]] ? ' sel' : ''), c[1]);
+      b.addEventListener('click', function () { setAct('m:' + c[0], queue['m:' + c[0]] ? null : { a: 'cmd', c: c[0] }); b.classList.toggle('sel'); });
+      view.appendChild(b);
     });
   }
 
-  // Списки: [id, название, исполнитель, приоритет]
-  function list(title, items) {
-    if (!items || !items.length) return;
-    app.appendChild(el('h2', null, title));
+  function archive() {
+    if (!d.arch || !d.arch.length) { view.appendChild(el('div', 'empty', 'Архив пуст')); return; }
+    view.appendChild(el('h2', null, 'Недавно закрыто'));
     var c = el('div', 'card');
-    items.forEach(function (x) {
-      var it = el('div', 'item');
-      var meta = el('div');
-      meta.appendChild(el('span', 'tag p' + (x[3] || 2), 'P' + (x[3] || 2)));
-      meta.appendChild(el('span', 'tag', x[2] || '—'));
-      meta.appendChild(el('span', 'sub', x[0]));
-      it.appendChild(meta);
-      it.appendChild(el('div', null, x[1]));
-      c.appendChild(it);
+    d.arch.forEach(function (x) {
+      var r = el('div'); r.style.padding = '6px 0';
+      r.appendChild(el('span', 'tag', '✓ ' + x[0])); r.appendChild(el('span', null, x[1])); c.appendChild(r);
     });
-    app.appendChild(c);
+    view.appendChild(c);
+    view.appendChild(el('div', 'sub', 'Полный архив и история решений лежат на доске: в боте кнопка «Доска задач».'));
   }
-  list('Ждут решения Виктории', d.ask);
-  list('Делаем сейчас', d.top);
+
+  function draw() {
+    clear(view);
+    if (tab === 'over') overview(); else if (tab === 'dec') decisions(); else if (tab === 'cmd') commands(); else archive();
+  }
+  drawTabs(); draw(); refreshSend();
 })();
 </script>
 </body>
