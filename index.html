@@ -154,6 +154,22 @@
     if (d.cards) sum.appendChild(el('div', 'sub', 'Карточки: закрыто ' + d.cards[1] + ' из ' + d.cards[0] +
       (d.cards[2] ? ', в работе ' + d.cards[2] : '') + (d.cards[3] ? ', ждут проверки ' + d.cards[3] : '')));
     view.appendChild(sum);
+    // Лимиты агентов: [название, процент или null, пояснение]
+    if (d.lim && d.lim.length) {
+      view.appendChild(el('h2', null, 'Лимиты и связь'));
+      d.lim.forEach(function (x) {
+        var c = el('div', 'card'), r = el('div', 'row');
+        r.appendChild(el('span', null, x[0]));
+        r.appendChild(el('span', 'sub', (x[1] !== null ? x[1] + '% · ' : '') + (x[2] || '')));
+        c.appendChild(r);
+        if (x[1] !== null) {
+          var b = bar(x[1]);
+          b.firstChild.style.background = x[1] >= 90 ? 'var(--bad)' : (x[1] >= 80 ? 'var(--warn)' : 'var(--ok)');
+          c.appendChild(b);
+        }
+        view.appendChild(c);
+      });
+    }
     if (d.dirs && d.dirs.length) {
       view.appendChild(el('h2', null, 'Направления'));
       d.dirs.forEach(function (x) {
@@ -222,7 +238,7 @@
     d.ask.forEach(function (x) { view.appendChild(cardItem(x, true)); });
   }
 
-  var CMDS = [['status', '📊 Статус системы'], ['board', '📋 Доска задач'], ['orders', '📥 Проверить ящик заказов'], ['pause', '🛑 Стоп / Пауза']];
+  var CMDS = [['status', '📊 Статус системы'], ['limits', '🚦 Лимиты и связь'], ['board', '📋 Доска задач'], ['orders', '📥 Проверить ящик заказов'], ['pause', '🛑 Стоп / Пауза']];
   function commands() {
     view.appendChild(el('div', 'sub', 'Команда уйдёт боту, ответ придёт в чат.'));
     CMDS.forEach(function (c) {
