@@ -122,7 +122,7 @@
     sendBtn.textContent = label;
     sendBtn.style.display = (n && !inTelegram) ? 'block' : 'none';
   }
-  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p', modes: 'r', services: 'v' };
+  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p', modes: 'r', services: 'v', sync: 'y' };
   function buildLink() {
     var parts = [];
     Object.keys(queue).forEach(function (k) {
@@ -301,6 +301,7 @@
 
   // ---- Система ----
   var TILES = [
+    ['sync', '🔁', 'Синхронизация', 'Обновить карту, сервисы, доску; агенты сверят свои части'],
     ['services', '🧩', 'Все сервисы', 'Что работает, что по расписанию, что молчит'],
     ['status', '📊', 'Статус системы', 'Что запущено, очередь, память'],
     ['board', '📋', 'Доска задач', 'Сводка: что в работе и что ждёт'],
