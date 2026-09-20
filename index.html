@@ -122,7 +122,7 @@
     sendBtn.textContent = label;
     sendBtn.style.display = (n && !inTelegram) ? 'block' : 'none';
   }
-  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p', modes: 'r' };
+  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p', modes: 'r', services: 'v' };
   function buildLink() {
     var parts = [];
     Object.keys(queue).forEach(function (k) {
@@ -194,6 +194,17 @@
       var go1 = el('div', 'btns'), b1 = el('button', null, 'Открыть решения →');
       b1.addEventListener('click', function () { go('dec'); }); go1.appendChild(b1); a.appendChild(go1);
       view.appendChild(a);
+    }
+
+    if (d.sv) {
+      var sc = el('div', 'card'), sr = el('div', 'row');
+      sr.appendChild(el('span', null, '🧩 Сервисы'));
+      sr.appendChild(el('span', 'pct', d.sv[0] + ' из ' + d.sv[1] + ' в порядке'));
+      sc.appendChild(sr); sc.appendChild(bar(Math.round(100 * d.sv[0] / Math.max(1, d.sv[1])), d.sv[0] === d.sv[1] ? 'var(--ok)' : 'var(--warn)'));
+      if (d.sv[2] && d.sv[2].length) sc.appendChild(el('div', 'sub', 'Внимание: ' + d.sv[2].join(', ')));
+      var sb = el('div', 'btns'), sbb = el('button', null, 'Подробно →');
+      sbb.addEventListener('click', function () { go('sys'); }); sb.appendChild(sbb); sc.appendChild(sb);
+      view.appendChild(sc);
     }
 
     if (d.lim && d.lim.length) {
@@ -290,6 +301,7 @@
 
   // ---- Система ----
   var TILES = [
+    ['services', '🧩', 'Все сервисы', 'Что работает, что по расписанию, что молчит'],
     ['status', '📊', 'Статус системы', 'Что запущено, очередь, память'],
     ['board', '📋', 'Доска задач', 'Сводка: что в работе и что ждёт'],
     ['orders', '📥', 'Заказы с бирж', 'Что пришло в ящик заказов'],
