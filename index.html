@@ -156,6 +156,10 @@
 
   // ---- вкладки ----
   var tab = 'home';
+  var docsSearchTerm = '';
+  var docsShowArchived = false;
+  var docsAuthorFilter = 'all';
+  var docsSortBy = 'date';
   var askN = d.ask ? d.ask.length : 0;
   var TABS = [['home', '🏠 Главное'], ['dec', '🗳 Решения'], ['work', '🛠 Работа'], ['docs', '📚 Документы'], ['sys', '⚙️ Система'], ['arc', '🗄 Архив']];
   function drawTabs() {
@@ -343,9 +347,6 @@
 
   function draw() {
     clear(view);
-    
-  var docsSearchTerm = '';
-  var docsShowArchived = false;
 
   function formatMarkdown(text) {
     if (!text) return '';
@@ -353,6 +354,22 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+
+    // Fenced code blocks
+    esc = esc.replace(/```([a-z0-9_-]*)\n([\s\S]*?)```/gim, function(m, lang, code) {
+      return '<pre style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:10px;overflow-x:auto;font-family:monospace;font-size:12px;color:#c084fc;margin:8px 0;"><code>' + code + '</code></pre>';
+    });
+
+    // Table rows
+    esc = esc.replace(/^\|(.+)\|$/gim, function(match, row) {
+      var cells = row.split('|').map(function(c) { return c.trim(); });
+      if (cells.every(function(c) { return /^:?-+:?$/.test(c); })) {
+        return '';
+      }
+      return '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">' +
+        cells.map(function(c) { return '<span style="flex:1;min-width:60px;">' + c + '</span>'; }).join('') +
+        '</div>';
+    });
 
     return esc
       .replace(/^### (.*$)/gim, '<h4 style="color:var(--accent);margin:10px 0 4px;font-size:14px;">$1</h4>')
@@ -377,13 +394,14 @@
 
     var intro = el('div', 'card');
     intro.appendChild(el('div', 'title', '📚 Документы и Артефакты (' + rawDocs.length + ')'));
-    intro.appendChild(el('div', 'hint', 'Исследования, спецификации и регламенты Штаба. Все файлы сгруппированы по задачам, с поддержкой поиска, архива и комментариев.'));
+    intro.appendChild(el('div', 'hint', 'База знаний, исследования, спецификации и регламенты Штаба.'));
 
     // Строка поиска
     var searchBox = el('div');
     searchBox.style.marginTop = '10px';
     searchBox.style.display = 'flex';
     searchBox.style.gap = '8px';
+    searchBox.style.alignItems = 'center';
 
     var searchInput = el('input');
     searchInput.type = 'text';
@@ -396,10 +414,17 @@
     searchInput.style.background = 'rgba(0,0,0,0.2)';
     searchInput.style.color = 'var(--text)';
     searchInput.style.fontSize = '13px';
-    searchInput.addEventListener('input', function (e) {
-      docsSearchTerm = e.target.value.toLowerCase().trim();
-      go('docs');
-    });
+
+    var clearBtn = el('button');
+    clearBtn.textContent = '✕';
+    clearBtn.style.padding = '8px 12px';
+    clearBtn.style.borderRadius = '8px';
+    clearBtn.style.border = '1px solid rgba(255,255,255,0.08)';
+    clearBtn.style.background = 'rgba(255,255,255,0.04)';
+    clearBtn.style.color = 'var(--text-dim)';
+    clearBtn.style.cursor = 'pointer';
+    clearBtn.title = 'Очистить поиск';
+    clearBtn.style.display = docsSearchTerm ? 'inline-block' : 'none';
 
     var arcToggle = el('button');
     arcToggle.textContent = docsShowArchived ? '📁 Скрыть архив' : '🗄 Архив (' + archived.length + ')';
@@ -409,172 +434,386 @@
     arcToggle.style.background = docsShowArchived ? 'var(--accent)' : 'var(--card)';
     arcToggle.style.color = docsShowArchived ? '#fff' : 'var(--text)';
     arcToggle.style.fontSize = '12px';
+    arcToggle.style.cursor = 'pointer';
     arcToggle.addEventListener('click', function () {
       docsShowArchived = !docsShowArchived;
       go('docs');
     });
 
     searchBox.appendChild(searchInput);
+    searchBox.appendChild(clearBtn);
     searchBox.appendChild(arcToggle);
     intro.appendChild(searchBox);
-    view.appendChild(intro);
 
-    // Фильтрация
-    var filtered = rawDocs.filter(function (d) {
-      var isArchived = archived.indexOf(d.id) !== -1;
-      if (docsShowArchived) {
-        if (!isArchived) return false;
-      } else {
-        if (isArchived) return false;
-      }
-      if (!docsSearchTerm) return true;
-      var q = docsSearchTerm;
-      return (d.title && d.title.toLowerCase().indexOf(q) !== -1) ||
-             (d.task_id && d.task_id.toLowerCase().indexOf(q) !== -1) ||
-             (d.group && d.group.toLowerCase().indexOf(q) !== -1) ||
-             (d.author && d.author.toLowerCase().indexOf(q) !== -1) ||
-             (d.summary && d.summary.toLowerCase().indexOf(q) !== -1);
-    });
+    // Панель фильтров (Авторы + Сортировка)
+    var filterRow = el('div');
+    filterRow.style.marginTop = '10px';
+    filterRow.style.display = 'flex';
+    filterRow.style.gap = '6px';
+    filterRow.style.flexWrap = 'wrap';
+    filterRow.style.alignItems = 'center';
 
-    if (!filtered.length) {
-      view.appendChild(el('div', 'card hint', docsShowArchived ? 'В архиве нет документов.' : 'По запросу "' + docsSearchTerm + '" ничего не найдено.'));
-      return;
+    function makeChip(label, active, onClick) {
+      var c = el('button');
+      c.textContent = label;
+      c.style.padding = '4px 10px';
+      c.style.borderRadius = '14px';
+      c.style.fontSize = '11px';
+      c.style.border = active ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
+      c.style.background = active ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      c.style.color = active ? '#fff' : 'var(--text-dim)';
+      c.style.cursor = 'pointer';
+      c.addEventListener('click', onClick);
+      return c;
     }
 
-    var groups = {};
-    filtered.forEach(function (d) {
-      if (!groups[d.group]) groups[d.group] = [];
-      groups[d.group].push(d);
+    var chipAll = makeChip('Все авторы', docsAuthorFilter === 'all', function () {
+      docsAuthorFilter = 'all';
+      updateFilterButtons();
+      renderList();
+    });
+    var chipRoxy = makeChip('🤖 ROXY', docsAuthorFilter === 'roxy', function () {
+      docsAuthorFilter = 'roxy';
+      updateFilterButtons();
+      renderList();
+    });
+    var chipClaude = makeChip('🧠 Claude', docsAuthorFilter === 'claude', function () {
+      docsAuthorFilter = 'claude';
+      updateFilterButtons();
+      renderList();
     });
 
-    Object.keys(groups).forEach(function (gName) {
-      var gDocs = groups[gName];
-      var gBox = el('div', 'card');
-      gBox.appendChild(el('div', 'title', gName + ' (' + gDocs.length + ')'));
+    function updateFilterButtons() {
+      chipAll.style.border = docsAuthorFilter === 'all' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
+      chipAll.style.background = docsAuthorFilter === 'all' ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      chipAll.style.color = docsAuthorFilter === 'all' ? '#fff' : 'var(--text-dim)';
 
-      gDocs.forEach(function (doc) {
-        var isDocArchived = archived.indexOf(doc.id) !== -1;
-        var item = el('div', 'item');
-        item.style.padding = '10px 0';
-        item.style.borderTop = '1px solid rgba(255,255,255,0.06)';
+      chipRoxy.style.border = docsAuthorFilter === 'roxy' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
+      chipRoxy.style.background = docsAuthorFilter === 'roxy' ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      chipRoxy.style.color = docsAuthorFilter === 'roxy' ? '#fff' : 'var(--text-dim)';
 
-        var topRow = el('div');
-        topRow.style.display = 'flex';
-        topRow.style.justifyContent = 'space-between';
-        topRow.style.alignItems = 'center';
+      chipClaude.style.border = docsAuthorFilter === 'claude' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
+      chipClaude.style.background = docsAuthorFilter === 'claude' ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      chipClaude.style.color = docsAuthorFilter === 'claude' ? '#fff' : 'var(--text-dim)';
+    }
 
-        var tChip = el('span', 'prio');
-        tChip.textContent = doc.task_id;
-        tChip.style.background = 'rgba(163,113,247,0.18)';
-        tChip.style.color = 'var(--accent)';
-        tChip.style.fontWeight = '600';
-        topRow.appendChild(tChip);
+    filterRow.appendChild(chipAll);
+    filterRow.appendChild(chipRoxy);
+    filterRow.appendChild(chipClaude);
 
-        var meta = el('span', 'hint');
-        meta.style.fontSize = '12px';
-        meta.textContent = doc.author + ' · ' + doc.date;
-        topRow.appendChild(meta);
+    var sortBtn = makeChip(docsSortBy === 'date' ? '⚡ Свежие' : '🔤 А-Я', true, function () {
+      docsSortBy = (docsSortBy === 'date') ? 'title' : 'date';
+      sortBtn.textContent = (docsSortBy === 'date') ? '⚡ Свежие' : '🔤 А-Я';
+      renderList();
+    });
+    filterRow.appendChild(sortBtn);
 
-        item.appendChild(topRow);
+    var countBadge = el('span', 'hint');
+    countBadge.style.fontSize = '12px';
+    countBadge.style.marginLeft = 'auto';
+    filterRow.appendChild(countBadge);
 
-        var dTitle = el('div');
-        dTitle.style.fontWeight = '600';
-        dTitle.style.fontSize = '14px';
-        dTitle.style.margin = '6px 0 4px';
-        dTitle.textContent = doc.title;
-        item.appendChild(dTitle);
+    intro.appendChild(filterRow);
+    view.appendChild(intro);
 
-        var dSumm = el('div', 'hint');
-        dSumm.style.fontSize = '13px';
-        dSumm.textContent = doc.summary;
-        item.appendChild(dSumm);
+    // Контейнер списка документов
+    var listContainer = el('div');
+    view.appendChild(listContainer);
 
-        var btnRow = el('div');
-        btnRow.style.display = 'flex';
-        btnRow.style.gap = '8px';
-        btnRow.style.marginTop = '8px';
-        btnRow.style.flexWrap = 'wrap';
+    function renderList() {
+      clear(listContainer);
+      archived = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
+      arcToggle.textContent = docsShowArchived ? '📁 Скрыть архив' : '🗄 Архив (' + archived.length + ')';
 
-        var readBtn = el('button');
-        readBtn.textContent = '📖 Читать';
-        readBtn.style.padding = '6px 12px';
-        readBtn.style.fontSize = '12px';
-        readBtn.style.borderRadius = '8px';
-        readBtn.style.border = '1px solid var(--accent)';
-        readBtn.style.background = 'transparent';
-        readBtn.style.color = 'var(--accent)';
+      var filtered = rawDocs.filter(function (d) {
+        var isArchived = archived.indexOf(d.id) !== -1;
+        if (docsShowArchived) {
+          if (!isArchived) return false;
+        } else {
+          if (isArchived) return false;
+        }
 
-        var contentBox = el('div');
-        contentBox.style.display = 'none';
-        contentBox.style.marginTop = '10px';
-        contentBox.style.padding = '12px';
-        contentBox.style.background = 'rgba(0,0,0,0.3)';
-        contentBox.style.borderRadius = '8px';
-        contentBox.style.fontSize = '13px';
-        contentBox.style.lineHeight = '1.6';
-        contentBox.style.maxHeight = '420px';
-        contentBox.style.overflowY = 'auto';
+        if (docsAuthorFilter === 'roxy') {
+          if ((d.author || '').toLowerCase().indexOf('roxy') === -1) return false;
+        } else if (docsAuthorFilter === 'claude') {
+          if ((d.author || '').toLowerCase().indexOf('claude') === -1) return false;
+        }
 
-        readBtn.addEventListener('click', function () {
-          var isOpen = contentBox.style.display === 'block';
-          if (!isOpen) {
-            contentBox.innerHTML = formatMarkdown(doc.content);
-            contentBox.style.display = 'block';
-            readBtn.textContent = '▲ Свернуть';
-          } else {
-            contentBox.style.display = 'none';
-            readBtn.textContent = '📖 Читать';
-          }
-        });
-
-        var commBtn = el('button');
-        commBtn.textContent = '💬 Комментировать';
-        commBtn.style.padding = '6px 12px';
-        commBtn.style.fontSize = '12px';
-        commBtn.style.borderRadius = '8px';
-        commBtn.style.border = '0';
-        commBtn.style.background = 'var(--card)';
-        commBtn.style.color = 'var(--text)';
-        commBtn.addEventListener('click', function () {
-          var c = prompt('Ваш комментарий к документу "' + doc.title + '" (прикрепится к задаче ' + doc.task_id + '):');
-          if (c && c.trim()) {
-            setAct('comm_' + doc.id, { a: 'comment', id: doc.task_id, text: '[' + doc.title + '] ' + c.trim() });
-            showToast('Комментарий добавлен в очередь отправки в бот!');
-          }
-        });
-
-        var arcBtn = el('button');
-        arcBtn.textContent = isDocArchived ? '📥 Восстановить' : '🗄 В архив';
-        arcBtn.style.padding = '6px 12px';
-        arcBtn.style.fontSize = '12px';
-        arcBtn.style.borderRadius = '8px';
-        arcBtn.style.border = '0';
-        arcBtn.style.background = 'rgba(255,255,255,0.06)';
-        arcBtn.style.color = 'var(--text-dim)';
-        arcBtn.addEventListener('click', function () {
-          var cur = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
-          if (isDocArchived) {
-            cur = cur.filter(function (x) { return x !== doc.id; });
-            showToast('Документ возвращен из архива');
-          } else {
-            if (cur.indexOf(doc.id) === -1) cur.push(doc.id);
-            showToast('Документ отправлен в архив');
-          }
-          localStorage.setItem('shtab_archived_docs', JSON.stringify(cur));
-          go('docs');
-        });
-
-        btnRow.appendChild(readBtn);
-        btnRow.appendChild(commBtn);
-        btnRow.appendChild(arcBtn);
-        item.appendChild(btnRow);
-        item.appendChild(contentBox);
-
-        gBox.appendChild(item);
+        if (!docsSearchTerm) return true;
+        var q = docsSearchTerm;
+        return (d.title && d.title.toLowerCase().indexOf(q) !== -1) ||
+               (d.task_id && d.task_id.toLowerCase().indexOf(q) !== -1) ||
+               (d.group && d.group.toLowerCase().indexOf(q) !== -1) ||
+               (d.author && d.author.toLowerCase().indexOf(q) !== -1) ||
+               (d.summary && d.summary.toLowerCase().indexOf(q) !== -1);
       });
 
-      view.appendChild(gBox);
+      // Сортировка
+      if (docsSortBy === 'date') {
+        filtered.sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+      } else {
+        filtered.sort(function (a, b) { return (a.title || '').localeCompare(b.title || ''); });
+      }
+
+      countBadge.textContent = 'Показано: ' + filtered.length + ' из ' + rawDocs.length;
+      clearBtn.style.display = docsSearchTerm ? 'inline-block' : 'none';
+
+      if (!filtered.length) {
+        listContainer.appendChild(el('div', 'card hint', docsShowArchived ? 'В архиве нет документов.' : 'По запросу ничего не найдено.'));
+        return;
+      }
+
+      var groups = {};
+      filtered.forEach(function (d) {
+        if (!groups[d.group]) groups[d.group] = [];
+        groups[d.group].push(d);
+      });
+
+      Object.keys(groups).forEach(function (gName) {
+        var gDocs = groups[gName];
+        var gBox = el('div', 'card');
+        gBox.appendChild(el('div', 'title', gName + ' (' + gDocs.length + ')'));
+
+        gDocs.forEach(function (doc) {
+          var isDocArchived = archived.indexOf(doc.id) !== -1;
+          var item = el('div', 'item');
+          item.style.padding = '10px 0';
+          item.style.borderTop = '1px solid rgba(255,255,255,0.06)';
+
+          var topRow = el('div');
+          topRow.style.display = 'flex';
+          topRow.style.justifyContent = 'space-between';
+          topRow.style.alignItems = 'center';
+
+          var tChip = el('span', 'prio');
+          tChip.textContent = doc.task_id;
+          tChip.style.background = 'rgba(163,113,247,0.18)';
+          tChip.style.color = 'var(--accent)';
+          tChip.style.fontWeight = '600';
+          topRow.appendChild(tChip);
+
+          var meta = el('span', 'hint');
+          meta.style.fontSize = '12px';
+          meta.textContent = doc.author + ' · ' + doc.date;
+          topRow.appendChild(meta);
+
+          item.appendChild(topRow);
+
+          var dTitle = el('div');
+          dTitle.style.fontWeight = '600';
+          dTitle.style.fontSize = '14px';
+          dTitle.style.margin = '6px 0 4px';
+          dTitle.textContent = doc.title;
+          item.appendChild(dTitle);
+
+          var dSumm = el('div', 'hint');
+          dSumm.style.fontSize = '13px';
+          dSumm.textContent = doc.summary;
+          item.appendChild(dSumm);
+
+          // Блок ИИ-выжимки (Суть в 3 буллетах)
+          var tldrBox = el('div');
+          tldrBox.style.display = 'none';
+          tldrBox.style.marginTop = '8px';
+          tldrBox.style.padding = '10px 12px';
+          tldrBox.style.background = 'rgba(163,113,247,0.1)';
+          tldrBox.style.borderLeft = '3px solid var(--accent)';
+          tldrBox.style.borderRadius = '0 8px 8px 0';
+          tldrBox.style.fontSize = '12px';
+          tldrBox.style.lineHeight = '1.5';
+          tldrBox.style.color = '#e9d5ff';
+
+          var tldrHeader = el('div');
+          tldrHeader.style.fontWeight = '600';
+          tldrHeader.style.marginBottom = '4px';
+          tldrHeader.textContent = '💡 Ключевая суть (TL;DR):';
+          tldrBox.appendChild(tldrHeader);
+
+          var summBullets = (doc.summary || '').split(/[\.\n]/).filter(function(s) { return s.trim().length > 10; });
+          if (summBullets.length === 0) summBullets = ['Документ содержит регламент/исследование для задачи ' + doc.task_id];
+          summBullets.slice(0, 3).forEach(function(b) {
+            var bEl = el('div');
+            bEl.textContent = '• ' + b.trim();
+            bEl.style.margin = '2px 0';
+            tldrBox.appendChild(bEl);
+          });
+
+          // Кнопки управления
+          var btnRow = el('div');
+          btnRow.style.display = 'flex';
+          btnRow.style.gap = '8px';
+          btnRow.style.marginTop = '8px';
+          btnRow.style.flexWrap = 'wrap';
+
+          // Кнопка Суть (TL;DR)
+          var tldrBtn = el('button');
+          tldrBtn.textContent = '💡 Суть';
+          tldrBtn.style.padding = '6px 10px';
+          tldrBtn.style.fontSize = '12px';
+          tldrBtn.style.borderRadius = '8px';
+          tldrBtn.style.border = '1px solid rgba(163,113,247,0.4)';
+          tldrBtn.style.background = 'rgba(163,113,247,0.08)';
+          tldrBtn.style.color = 'var(--accent)';
+          tldrBtn.style.cursor = 'pointer';
+          tldrBtn.addEventListener('click', function () {
+            var isO = tldrBox.style.display === 'block';
+            tldrBox.style.display = isO ? 'none' : 'block';
+            tldrBtn.style.background = isO ? 'rgba(163,113,247,0.08)' : 'rgba(163,113,247,0.25)';
+          });
+
+          // Кнопка Читать
+          var readBtn = el('button');
+          readBtn.textContent = '📖 Читать';
+          readBtn.style.padding = '6px 12px';
+          readBtn.style.fontSize = '12px';
+          readBtn.style.borderRadius = '8px';
+          readBtn.style.border = '1px solid var(--accent)';
+          readBtn.style.background = 'transparent';
+          readBtn.style.color = 'var(--accent)';
+          readBtn.style.cursor = 'pointer';
+
+          var contentBox = el('div');
+          contentBox.style.display = 'none';
+          contentBox.style.marginTop = '10px';
+          contentBox.style.padding = '12px';
+          contentBox.style.background = 'rgba(0,0,0,0.35)';
+          contentBox.style.borderRadius = '8px';
+          contentBox.style.fontSize = '13px';
+          contentBox.style.lineHeight = '1.6';
+          contentBox.style.maxHeight = '420px';
+          contentBox.style.overflowY = 'auto';
+
+          readBtn.addEventListener('click', function () {
+            var isOpen = contentBox.style.display === 'block';
+            if (!isOpen) {
+              contentBox.innerHTML = formatMarkdown(doc.content);
+              contentBox.style.display = 'block';
+              readBtn.textContent = '▲ Свернуть';
+            } else {
+              contentBox.style.display = 'none';
+              readBtn.textContent = '📖 Читать';
+            }
+          });
+
+          // Кнопка Копировать
+          var copyBtn = el('button');
+          copyBtn.textContent = '📋 Копия';
+          copyBtn.style.padding = '6px 10px';
+          copyBtn.style.fontSize = '12px';
+          copyBtn.style.borderRadius = '8px';
+          copyBtn.style.border = '0';
+          copyBtn.style.background = 'rgba(255,255,255,0.06)';
+          copyBtn.style.color = 'var(--text)';
+          copyBtn.style.cursor = 'pointer';
+          copyBtn.title = 'Скопировать текст Markdown в буфер';
+          copyBtn.addEventListener('click', function () {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(doc.content).then(function() {
+                showToast('Текст документа скопирован в буфер!');
+              }).catch(function() {
+                showToast('Ошибка доступа к буферу обмена');
+              });
+            } else {
+              showToast('Буфер обмена недоступен в этом окне');
+            }
+          });
+
+          // Кнопка Скачать .md
+          var dlBtn = el('button');
+          dlBtn.textContent = '📥 .md';
+          dlBtn.style.padding = '6px 10px';
+          dlBtn.style.fontSize = '12px';
+          dlBtn.style.borderRadius = '8px';
+          dlBtn.style.border = '0';
+          dlBtn.style.background = 'rgba(255,255,255,0.06)';
+          dlBtn.style.color = 'var(--text)';
+          dlBtn.style.cursor = 'pointer';
+          dlBtn.title = 'Скачать файл .md на устройство';
+          dlBtn.addEventListener('click', function () {
+            var blob = new Blob([doc.content], { type: 'text/markdown;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            var safeName = (doc.task_id + '_' + (doc.title || 'doc')).replace(/[^a-zA-Z0-9_\-\.]/g, '_') + '.md';
+            a.download = safeName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Файл ' + safeName + ' скачан!');
+          });
+
+          // Кнопка Комментировать
+          var commBtn = el('button');
+          commBtn.textContent = '💬 Комментировать';
+          commBtn.style.padding = '6px 12px';
+          commBtn.style.fontSize = '12px';
+          commBtn.style.borderRadius = '8px';
+          commBtn.style.border = '0';
+          commBtn.style.background = 'var(--card)';
+          commBtn.style.color = 'var(--text)';
+          commBtn.style.cursor = 'pointer';
+          commBtn.addEventListener('click', function () {
+            var c = prompt('Ваш комментарий к документу "' + doc.title + '" (прикрепится к задаче ' + doc.task_id + '):');
+            if (c && c.trim()) {
+              setAct('comm_' + doc.id, { a: 'comment', id: doc.task_id, text: '[' + doc.title + '] ' + c.trim() });
+              showToast('Комментарий добавлен в очередь отправки в бот!');
+            }
+          });
+
+          // Кнопка В архив / Восстановить
+          var arcBtn = el('button');
+          arcBtn.textContent = isDocArchived ? '📥 Восстановить' : '🗄 В архив';
+          arcBtn.style.padding = '6px 10px';
+          arcBtn.style.fontSize = '12px';
+          arcBtn.style.borderRadius = '8px';
+          arcBtn.style.border = '0';
+          arcBtn.style.background = 'rgba(255,255,255,0.04)';
+          arcBtn.style.color = 'var(--text-dim)';
+          arcBtn.style.cursor = 'pointer';
+          arcBtn.addEventListener('click', function () {
+            var cur = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
+            if (isDocArchived) {
+              cur = cur.filter(function (x) { return x !== doc.id; });
+              showToast('Документ возвращен из архива');
+            } else {
+              if (cur.indexOf(doc.id) === -1) cur.push(doc.id);
+              showToast('Документ отправлен в архив');
+            }
+            localStorage.setItem('shtab_archived_docs', JSON.stringify(cur));
+            renderList();
+          });
+
+          btnRow.appendChild(tldrBtn);
+          btnRow.appendChild(readBtn);
+          btnRow.appendChild(copyBtn);
+          btnRow.appendChild(dlBtn);
+          btnRow.appendChild(commBtn);
+          btnRow.appendChild(arcBtn);
+
+          item.appendChild(btnRow);
+          item.appendChild(tldrBox);
+          item.appendChild(contentBox);
+
+          gBox.appendChild(item);
+        });
+
+        listContainer.appendChild(gBox);
+      });
+    }
+
+    searchInput.addEventListener('input', function (e) {
+      docsSearchTerm = e.target.value.toLowerCase().trim();
+      renderList();
     });
+
+    clearBtn.addEventListener('click', function () {
+      docsSearchTerm = '';
+      searchInput.value = '';
+      renderList();
+    });
+
+    renderList();
   }
 
   if (tab === 'home') home(); else if (tab === 'dec') decisions(); else if (tab === 'work') work(); else if (tab === 'docs') docsView(); else if (tab === 'sys') system(); else archive();
