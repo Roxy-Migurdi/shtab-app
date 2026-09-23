@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Штаб</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="docs_data.js"></script>
 <style>
   :root {
     --bg: var(--tg-theme-bg-color, #14121a);
@@ -156,7 +157,7 @@
   // ---- вкладки ----
   var tab = 'home';
   var askN = d.ask ? d.ask.length : 0;
-  var TABS = [['home', '🏠 Главное'], ['dec', '🗳 Решения'], ['work', '🛠 Работа'], ['sys', '⚙️ Система'], ['arc', '🗄 Архив']];
+  var TABS = [['home', '🏠 Главное'], ['dec', '🗳 Решения'], ['work', '🛠 Работа'], ['docs', '📚 Документы'], ['sys', '⚙️ Система'], ['arc', '🗄 Архив']];
   function drawTabs() {
     clear(tabsEl);
     TABS.forEach(function (t) {
@@ -342,7 +343,127 @@
 
   function draw() {
     clear(view);
-    if (tab === 'home') home(); else if (tab === 'dec') decisions(); else if (tab === 'work') work(); else if (tab === 'sys') system(); else archive();
+    
+  function docsView() {
+    var docs = window.SHTAB_DOCS || [];
+    if (!docs.length) {
+      view.appendChild(el('div', 'card hint', 'Документы и артефакты пока не загружены.'));
+      return;
+    }
+    var intro = el('div', 'card');
+    intro.appendChild(el('div', 'title', '📚 Документы и Артефакты (' + docs.length + ' ' + tick(docs.length, 'файл', 'файла', 'файлов') + ')'));
+    intro.appendChild(el('div', 'hint', 'Исследования, спецификации и регламенты Штаба. Все файлы привязаны к задачам, сгруппированы по темам и доступны для быстрого чтения и комментариев.'));
+    view.appendChild(intro);
+
+    var groups = {};
+    docs.forEach(function (d) {
+      if (!groups[d.group]) groups[d.group] = [];
+      groups[d.group].push(d);
+    });
+
+    Object.keys(groups).forEach(function (gName) {
+      var gDocs = groups[gName];
+      var gBox = el('div', 'card');
+      gBox.appendChild(el('div', 'title', gName + ' (' + gDocs.length + ' ' + tick(gDocs.length, 'док', 'дока', 'доков') + ')'));
+
+      gDocs.forEach(function (doc) {
+        var item = el('div', 'item');
+        item.style.padding = '10px 0';
+        item.style.borderTop = '1px solid rgba(255,255,255,0.06)';
+
+        var topRow = el('div');
+        topRow.style.display = 'flex';
+        topRow.style.justifyContent = 'space-between';
+        topRow.style.alignItems = 'center';
+
+        var tChip = el('span', 'prio');
+        tChip.textContent = doc.task_id;
+        tChip.style.background = 'rgba(163,113,247,0.18)';
+        tChip.style.color = 'var(--accent)';
+        tChip.style.fontWeight = '600';
+        topRow.appendChild(tChip);
+
+        var meta = el('span', 'hint');
+        meta.style.fontSize = '12px';
+        meta.textContent = doc.author + ' · ' + doc.date;
+        topRow.appendChild(meta);
+
+        item.appendChild(topRow);
+
+        var dTitle = el('div');
+        dTitle.style.fontWeight = '600';
+        dTitle.style.fontSize = '14px';
+        dTitle.style.margin = '6px 0 4px';
+        dTitle.textContent = doc.title;
+        item.appendChild(dTitle);
+
+        var dSumm = el('div', 'hint');
+        dSumm.style.fontSize = '13px';
+        dSumm.textContent = doc.summary;
+        item.appendChild(dSumm);
+
+        var btnRow = el('div');
+        btnRow.style.display = 'flex';
+        btnRow.style.gap = '8px';
+        btnRow.style.marginTop = '8px';
+
+        var readBtn = el('button');
+        readBtn.textContent = '📖 Читать полностью';
+        readBtn.style.padding = '6px 12px';
+        readBtn.style.fontSize = '12px';
+        readBtn.style.borderRadius = '8px';
+        readBtn.style.border = '1px solid var(--accent)';
+        readBtn.style.background = 'transparent';
+        readBtn.style.color = 'var(--accent)';
+
+        var contentBox = el('div');
+        contentBox.style.display = 'none';
+        contentBox.style.marginTop = '10px';
+        contentBox.style.padding = '12px';
+        contentBox.style.background = 'rgba(0,0,0,0.25)';
+        contentBox.style.borderRadius = '8px';
+        contentBox.style.fontSize = '13px';
+        contentBox.style.lineHeight = '1.5';
+        contentBox.style.whiteSpace = 'pre-wrap';
+        contentBox.style.maxHeight = '360px';
+        contentBox.style.overflowY = 'auto';
+        contentBox.textContent = doc.content;
+
+        readBtn.addEventListener('click', function () {
+          var isOpen = contentBox.style.display === 'block';
+          contentBox.style.display = isOpen ? 'none' : 'block';
+          readBtn.textContent = isOpen ? '📖 Читать полностью' : '▲ Свернуть документ';
+        });
+
+        var commBtn = el('button');
+        commBtn.textContent = '💬 Комментировать';
+        commBtn.style.padding = '6px 12px';
+        commBtn.style.fontSize = '12px';
+        commBtn.style.borderRadius = '8px';
+        commBtn.style.border = '0';
+        commBtn.style.background = 'var(--card)';
+        commBtn.style.color = 'var(--text)';
+        commBtn.addEventListener('click', function () {
+          var c = prompt('Ваш комментарий к документу "' + doc.title + '" (будет прикреплён к задаче ' + doc.task_id + '):');
+          if (c && c.trim()) {
+            setAct('comm_' + doc.id, { a: 'comment', id: doc.task_id, text: '[' + doc.title + '] ' + c.trim() });
+            showToast('Комментарий добавлен в очередь отправки в бот!');
+          }
+        });
+
+        btnRow.appendChild(readBtn);
+        btnRow.appendChild(commBtn);
+        item.appendChild(btnRow);
+        item.appendChild(contentBox);
+
+        gBox.appendChild(item);
+      });
+
+      view.appendChild(gBox);
+    });
+  }
+
+  if (tab === 'home') home(); else if (tab === 'dec') decisions(); else if (tab === 'work') work(); else if (tab === 'docs') docsView(); else if (tab === 'sys') system(); else archive();
   }
   drawTabs(); draw(); refreshSend();
 })();
