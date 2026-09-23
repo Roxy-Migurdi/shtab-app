@@ -344,19 +344,105 @@
   function draw() {
     clear(view);
     
+  var docsSearchTerm = '';
+  var docsShowArchived = false;
+
+  function formatMarkdown(text) {
+    if (!text) return '';
+    var esc = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return esc
+      .replace(/^### (.*$)/gim, '<h4 style="color:var(--accent);margin:10px 0 4px;font-size:14px;">$1</h4>')
+      .replace(/^## (.*$)/gim, '<h3 style="color:#fff;margin:14px 0 6px;font-size:15px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:3px;">$1</h3>')
+      .replace(/^# (.*$)/gim, '<h2 style="color:#fff;margin:16px 0 8px;font-size:16px;border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:4px;">$1</h2>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#fff;">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em style="color:#ddd;">$1</em>')
+      .replace(/`([^`]+)`/gim, '<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;color:#a371f7;font-family:monospace;font-size:12px;">$1</code>')
+      .replace(/^\> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent);margin:8px 0;padding:4px 10px;background:rgba(163,113,247,0.06);color:var(--text-dim);border-radius:0 6px 6px 0;">$1</blockquote>')
+      .replace(/^\- (.*$)/gim, '<div style="padding-left:14px;margin:2px 0;">• $1</div>')
+      .replace(/\n\n/gim, '<div style="height:8px;"></div>');
+  }
+
   function docsView() {
-    var docs = window.SHTAB_DOCS || [];
-    if (!docs.length) {
+    var rawDocs = window.SHTAB_DOCS || [];
+    var archived = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
+
+    if (!rawDocs.length) {
       view.appendChild(el('div', 'card hint', 'Документы и артефакты пока не загружены.'));
       return;
     }
+
     var intro = el('div', 'card');
-    intro.appendChild(el('div', 'title', '📚 Документы и Артефакты (' + docs.length + ' ' + tick(docs.length, 'файл', 'файла', 'файлов') + ')'));
-    intro.appendChild(el('div', 'hint', 'Исследования, спецификации и регламенты Штаба. Все файлы привязаны к задачам, сгруппированы по темам и доступны для быстрого чтения и комментариев.'));
+    intro.appendChild(el('div', 'title', '📚 Документы и Артефакты (' + rawDocs.length + ')'));
+    intro.appendChild(el('div', 'hint', 'Исследования, спецификации и регламенты Штаба. Все файлы сгруппированы по задачам, с поддержкой поиска, архива и комментариев.'));
+
+    // Строка поиска
+    var searchBox = el('div');
+    searchBox.style.marginTop = '10px';
+    searchBox.style.display = 'flex';
+    searchBox.style.gap = '8px';
+
+    var searchInput = el('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = '🔍 Поиск по названию, задаче, автору...';
+    searchInput.value = docsSearchTerm;
+    searchInput.style.flex = '1';
+    searchInput.style.padding = '8px 12px';
+    searchInput.style.borderRadius = '8px';
+    searchInput.style.border = '1px solid rgba(255,255,255,0.12)';
+    searchInput.style.background = 'rgba(0,0,0,0.2)';
+    searchInput.style.color = 'var(--text)';
+    searchInput.style.fontSize = '13px';
+    searchInput.addEventListener('input', function (e) {
+      docsSearchTerm = e.target.value.toLowerCase().trim();
+      go('docs');
+    });
+
+    var arcToggle = el('button');
+    arcToggle.textContent = docsShowArchived ? '📁 Скрыть архив' : '🗄 Архив (' + archived.length + ')';
+    arcToggle.style.padding = '8px 12px';
+    arcToggle.style.borderRadius = '8px';
+    arcToggle.style.border = '1px solid rgba(255,255,255,0.12)';
+    arcToggle.style.background = docsShowArchived ? 'var(--accent)' : 'var(--card)';
+    arcToggle.style.color = docsShowArchived ? '#fff' : 'var(--text)';
+    arcToggle.style.fontSize = '12px';
+    arcToggle.addEventListener('click', function () {
+      docsShowArchived = !docsShowArchived;
+      go('docs');
+    });
+
+    searchBox.appendChild(searchInput);
+    searchBox.appendChild(arcToggle);
+    intro.appendChild(searchBox);
     view.appendChild(intro);
 
+    // Фильтрация
+    var filtered = rawDocs.filter(function (d) {
+      var isArchived = archived.indexOf(d.id) !== -1;
+      if (docsShowArchived) {
+        if (!isArchived) return false;
+      } else {
+        if (isArchived) return false;
+      }
+      if (!docsSearchTerm) return true;
+      var q = docsSearchTerm;
+      return (d.title && d.title.toLowerCase().indexOf(q) !== -1) ||
+             (d.task_id && d.task_id.toLowerCase().indexOf(q) !== -1) ||
+             (d.group && d.group.toLowerCase().indexOf(q) !== -1) ||
+             (d.author && d.author.toLowerCase().indexOf(q) !== -1) ||
+             (d.summary && d.summary.toLowerCase().indexOf(q) !== -1);
+    });
+
+    if (!filtered.length) {
+      view.appendChild(el('div', 'card hint', docsShowArchived ? 'В архиве нет документов.' : 'По запросу "' + docsSearchTerm + '" ничего не найдено.'));
+      return;
+    }
+
     var groups = {};
-    docs.forEach(function (d) {
+    filtered.forEach(function (d) {
       if (!groups[d.group]) groups[d.group] = [];
       groups[d.group].push(d);
     });
@@ -364,9 +450,10 @@
     Object.keys(groups).forEach(function (gName) {
       var gDocs = groups[gName];
       var gBox = el('div', 'card');
-      gBox.appendChild(el('div', 'title', gName + ' (' + gDocs.length + ' ' + tick(gDocs.length, 'док', 'дока', 'доков') + ')'));
+      gBox.appendChild(el('div', 'title', gName + ' (' + gDocs.length + ')'));
 
       gDocs.forEach(function (doc) {
+        var isDocArchived = archived.indexOf(doc.id) !== -1;
         var item = el('div', 'item');
         item.style.padding = '10px 0';
         item.style.borderTop = '1px solid rgba(255,255,255,0.06)';
@@ -406,9 +493,10 @@
         btnRow.style.display = 'flex';
         btnRow.style.gap = '8px';
         btnRow.style.marginTop = '8px';
+        btnRow.style.flexWrap = 'wrap';
 
         var readBtn = el('button');
-        readBtn.textContent = '📖 Читать полностью';
+        readBtn.textContent = '📖 Читать';
         readBtn.style.padding = '6px 12px';
         readBtn.style.fontSize = '12px';
         readBtn.style.borderRadius = '8px';
@@ -420,19 +508,23 @@
         contentBox.style.display = 'none';
         contentBox.style.marginTop = '10px';
         contentBox.style.padding = '12px';
-        contentBox.style.background = 'rgba(0,0,0,0.25)';
+        contentBox.style.background = 'rgba(0,0,0,0.3)';
         contentBox.style.borderRadius = '8px';
         contentBox.style.fontSize = '13px';
-        contentBox.style.lineHeight = '1.5';
-        contentBox.style.whiteSpace = 'pre-wrap';
-        contentBox.style.maxHeight = '360px';
+        contentBox.style.lineHeight = '1.6';
+        contentBox.style.maxHeight = '420px';
         contentBox.style.overflowY = 'auto';
-        contentBox.textContent = doc.content;
 
         readBtn.addEventListener('click', function () {
           var isOpen = contentBox.style.display === 'block';
-          contentBox.style.display = isOpen ? 'none' : 'block';
-          readBtn.textContent = isOpen ? '📖 Читать полностью' : '▲ Свернуть документ';
+          if (!isOpen) {
+            contentBox.innerHTML = formatMarkdown(doc.content);
+            contentBox.style.display = 'block';
+            readBtn.textContent = '▲ Свернуть';
+          } else {
+            contentBox.style.display = 'none';
+            readBtn.textContent = '📖 Читать';
+          }
         });
 
         var commBtn = el('button');
@@ -444,15 +536,37 @@
         commBtn.style.background = 'var(--card)';
         commBtn.style.color = 'var(--text)';
         commBtn.addEventListener('click', function () {
-          var c = prompt('Ваш комментарий к документу "' + doc.title + '" (будет прикреплён к задаче ' + doc.task_id + '):');
+          var c = prompt('Ваш комментарий к документу "' + doc.title + '" (прикрепится к задаче ' + doc.task_id + '):');
           if (c && c.trim()) {
             setAct('comm_' + doc.id, { a: 'comment', id: doc.task_id, text: '[' + doc.title + '] ' + c.trim() });
             showToast('Комментарий добавлен в очередь отправки в бот!');
           }
         });
 
+        var arcBtn = el('button');
+        arcBtn.textContent = isDocArchived ? '📥 Восстановить' : '🗄 В архив';
+        arcBtn.style.padding = '6px 12px';
+        arcBtn.style.fontSize = '12px';
+        arcBtn.style.borderRadius = '8px';
+        arcBtn.style.border = '0';
+        arcBtn.style.background = 'rgba(255,255,255,0.06)';
+        arcBtn.style.color = 'var(--text-dim)';
+        arcBtn.addEventListener('click', function () {
+          var cur = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
+          if (isDocArchived) {
+            cur = cur.filter(function (x) { return x !== doc.id; });
+            showToast('Документ возвращен из архива');
+          } else {
+            if (cur.indexOf(doc.id) === -1) cur.push(doc.id);
+            showToast('Документ отправлен в архив');
+          }
+          localStorage.setItem('shtab_archived_docs', JSON.stringify(cur));
+          go('docs');
+        });
+
         btnRow.appendChild(readBtn);
         btnRow.appendChild(commBtn);
+        btnRow.appendChild(arcBtn);
         item.appendChild(btnRow);
         item.appendChild(contentBox);
 
