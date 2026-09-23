@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Штаб</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="docs_data.js"></script>
 <style>
   :root {
     --bg: var(--tg-theme-bg-color, #14121a);
@@ -348,6 +347,29 @@
   function draw() {
     clear(view);
 
+  async function deriveDocsKey(password, saltB64, iterations) {
+    var salt = Uint8Array.from(atob(saltB64), function (c) { return c.charCodeAt(0); });
+    var base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: salt, iterations: iterations, hash: "SHA-256" },
+      base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
+    );
+  }
+
+  async function decryptDocs(pw) {
+    var resp = await fetch("docs.enc.json", { cache: "no-store" });
+    if (!resp.ok) throw new Error("Файл docs.enc.json недоступен (" + resp.status + ")");
+    var data = await resp.json();
+    var key = await deriveDocsKey(pw, data.salt, data.iterations);
+    var iv = Uint8Array.from(atob(data.iv), function (c) { return c.charCodeAt(0); });
+    var ct = Uint8Array.from(atob(data.ciphertext), function (c) { return c.charCodeAt(0); });
+    var plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ct);
+    var jsonText = new TextDecoder().decode(plainBuf);
+    window.SHTAB_DOCS = JSON.parse(jsonText);
+    sessionStorage.setItem("shtab_docs_password", pw);
+    return window.SHTAB_DOCS;
+  }
+
   function formatMarkdown(text) {
     if (!text) return '';
     var esc = text
@@ -384,13 +406,86 @@
   }
 
   function docsView() {
-    var rawDocs = window.SHTAB_DOCS || [];
-    var archived = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
+    var rawDocs = window.SHTAB_DOCS;
 
-    if (!rawDocs.length) {
-      view.appendChild(el('div', 'card hint', 'Документы и артефакты пока не загружены.'));
+    if (!rawDocs) {
+      var savedPw = sessionStorage.getItem("shtab_docs_password");
+      if (savedPw) {
+        var loadingCard = el('div', 'card');
+        loadingCard.appendChild(el('div', 'title', '🔐 Расшифровка документов...'));
+        loadingCard.appendChild(el('div', 'hint', 'Применяем ключ сессии...'));
+        view.appendChild(loadingCard);
+        decryptDocs(savedPw).then(function () {
+          go('docs');
+        }).catch(function () {
+          sessionStorage.removeItem("shtab_docs_password");
+          go('docs');
+        });
+        return;
+      }
+
+      var gate = el('div', 'card');
+      gate.appendChild(el('div', 'title', '🔐 Защищённый архив документов'));
+      gate.appendChild(el('div', 'hint', 'Все 40 внутренних спецификаций, исследований и регламентов зашифрованы AES-256-GCM. Введите пароль (тот же, что от доски):'));
+
+      var pBox = el('div');
+      pBox.style.marginTop = '12px';
+      pBox.style.display = 'flex';
+      pBox.style.gap = '8px';
+
+      var pInput = el('input');
+      pInput.type = 'password';
+      pInput.placeholder = 'Пароль доступа...';
+      pInput.style.flex = '1';
+      pInput.style.padding = '8px 12px';
+      pInput.style.borderRadius = '8px';
+      pInput.style.border = '1px solid rgba(255,255,255,0.12)';
+      pInput.style.background = 'rgba(0,0,0,0.2)';
+      pInput.style.color = 'var(--text)';
+      pInput.style.fontSize = '13px';
+
+      var pBtn = el('button');
+      pBtn.textContent = '🔓 Войти';
+      pBtn.style.padding = '8px 16px';
+      pBtn.style.borderRadius = '8px';
+      pBtn.style.border = '0';
+      pBtn.style.background = 'var(--accent)';
+      pBtn.style.color = '#fff';
+      pBtn.style.fontWeight = '600';
+      pBtn.style.cursor = 'pointer';
+
+      var pErr = el('div');
+      pErr.style.color = '#ef4444';
+      pErr.style.fontSize = '12px';
+      pErr.style.marginTop = '8px';
+
+      function doUnlock() {
+        var val = pInput.value.trim();
+        if (!val) return;
+        pBtn.disabled = true;
+        pBtn.textContent = '⏳ ...';
+        pErr.textContent = '';
+        decryptDocs(val).then(function () {
+          go('docs');
+        }).catch(function (e) {
+          pBtn.disabled = false;
+          pBtn.textContent = '🔓 Войти';
+          pErr.textContent = 'Неверный пароль или ошибка расшифровки.';
+        });
+      }
+
+      pBtn.addEventListener('click', doUnlock);
+      pInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doUnlock(); });
+
+      pBox.appendChild(pInput);
+      pBox.appendChild(pBtn);
+      gate.appendChild(pBox);
+      gate.appendChild(pErr);
+      view.appendChild(gate);
       return;
     }
+
+    var archived = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
 
     var intro = el('div', 'card');
     intro.appendChild(el('div', 'title', '📚 Документы и Артефакты (' + rawDocs.length + ')'));
@@ -443,6 +538,23 @@
     searchBox.appendChild(searchInput);
     searchBox.appendChild(clearBtn);
     searchBox.appendChild(arcToggle);
+
+    var lockBtn = el('button');
+    lockBtn.textContent = '🔒 Запереть';
+    lockBtn.title = 'Очистить ключ сессии и заблокировать доступ';
+    lockBtn.style.padding = '8px 10px';
+    lockBtn.style.borderRadius = '8px';
+    lockBtn.style.border = '1px solid rgba(255,255,255,0.08)';
+    lockBtn.style.background = 'rgba(255,255,255,0.04)';
+    lockBtn.style.color = 'var(--text-dim)';
+    lockBtn.style.fontSize = '12px';
+    lockBtn.style.cursor = 'pointer';
+    lockBtn.addEventListener('click', function () {
+      window.SHTAB_DOCS = null;
+      sessionStorage.removeItem("shtab_docs_password");
+      go('docs');
+    });
+    searchBox.appendChild(lockBtn);
     intro.appendChild(searchBox);
 
     // Панель фильтров (Авторы + Сортировка)

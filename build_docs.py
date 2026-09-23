@@ -1,10 +1,12 @@
+import sys
 import os
 import json
 import re
 import datetime
 
 BASE = r"E:\ROXY_SYSTEM"
-OUT_JS = os.path.join(BASE, "Shtab_Miniapp", "docs_data.js")
+OUT_ENC = os.path.join(BASE, "Shtab_Miniapp", "docs.enc.json")
+OUT_LEGACY_JS = os.path.join(BASE, "Shtab_Miniapp", "docs_data.js")
 
 SCAN_PATHS = [
     os.path.join(BASE, "Roxy_Freelance", "collab"),
@@ -149,11 +151,29 @@ def scan_all_documents():
 
 def build():
     docs = scan_all_documents()
-    os.makedirs(os.path.dirname(OUT_JS), exist_ok=True)
-    with open(OUT_JS, "w", encoding="utf-8") as f:
-        f.write("window.SHTAB_DOCS = " + json.dumps(docs, ensure_ascii=False, indent=2) + ";\n")
-        
-    print(f"[BUILD-DOCS-SUCCESS] Автоматически просканировано и собрано {len(docs)} документов в {OUT_JS}!")
+    os.makedirs(os.path.dirname(OUT_ENC), exist_ok=True)
+
+    # Шифрование тем же способом и паролем, что и доска (sh-15m / sh-kv7)
+    board_dir = os.path.join(BASE, "Shtab_Board")
+    if board_dir not in sys.path:
+        sys.path.append(board_dir)
+    import publish_board
+    password, _ = publish_board.get_or_create_password()
+
+    docs_json = json.dumps(docs, ensure_ascii=False)
+    payload = publish_board.encrypt(docs_json, password)
+
+    with open(OUT_ENC, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
+    # Удаляем незашифрованный docs_data.js для предотвращения утечек
+    if os.path.exists(OUT_LEGACY_JS):
+        try:
+            os.remove(OUT_LEGACY_JS)
+        except Exception as e:
+            print(f"Warning: could not remove {OUT_LEGACY_JS}: {e}")
+
+    print(f"[BUILD-DOCS-SUCCESS] Автоматически зашифровано и сохранено {len(docs)} документов в {OUT_ENC}!")
     return len(docs)
 
 if __name__ == "__main__":
