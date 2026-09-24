@@ -5,59 +5,109 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Штаб</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* Штаб v2 (sh-o5n): приборная панель, а не витрина. Цвет только как сигнал; эмодзи нет; у каждой цифры есть время. */
   :root {
-    --bg: var(--tg-theme-bg-color, #14121a);
-    --card: var(--tg-theme-secondary-bg-color, #1f1c29);
-    --text: var(--tg-theme-text-color, #f2eff8);
-    --hint: var(--tg-theme-hint-color, #9a94ab);
-    --accent: var(--tg-theme-button-color, #a56cf0);
-    --accent-text: var(--tg-theme-button-text-color, #fff);
-    --line: rgba(127,127,127,.22);
-    --ok: #4cc38a; --warn: #f0b429; --bad: #ef6461;
+    --bg: #000; --card: #0b0b0b; --raise: #141414;
+    --text: #ededea; --text-dim: #8b8b86; --hint: #8b8b86; --faint: #5c5c58;
+    --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.15);
+    --accent: #ededea; --accent-text: #000;
+    --ok: #5bd08a; --warn: #e5b454; --bad: #f06a5e;
+    --sans: "Geist", -apple-system, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --ease: cubic-bezier(.23, 1, .32, 1);
+  }
+  :root[data-theme="light"] {
+    --bg: #faf9f5; --card: #fff; --raise: #f1f0ec;
+    --text: #141413; --text-dim: #6f6e69; --hint: #6f6e69; --faint: #a3a29c;
+    --line: rgba(0,0,0,.07); --line2: rgba(0,0,0,.14);
+    --accent: #141413; --accent-text: #faf9f5;
+    --ok: #1f8a4c; --warn: #a86b00; --bad: #c23b30;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { margin: 0; padding: 12px 12px 110px; background: var(--bg); color: var(--text);
-         font: 15px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
-  h1 { font-size: 20px; margin: 2px 0 0; }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--hint); margin: 20px 2px 8px; }
+  body { margin: 0; padding: 14px 16px 110px; background: var(--bg); color: var(--text);
+         font: 15px/1.5 var(--sans); letter-spacing: -.005em; -webkit-font-smoothing: antialiased; }
+  button { font-family: var(--sans); }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -.035em; margin: 0; }
+  h2 { display: flex; align-items: center; gap: 10px; margin: 26px 0 10px; font: 500 10.5px var(--mono);
+       text-transform: uppercase; letter-spacing: .14em; color: var(--faint); }
+  h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
   .sub { color: var(--hint); font-size: 13px; }
-  .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 10px; }
-  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-  .big { font-size: 40px; font-weight: 700; line-height: 1; }
-  .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 8px; }
-  .bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
-  .pct { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .delta { font-size: 12px; margin-left: 6px; } .up { color: var(--ok); } .down { color: var(--bad); }
-  .chip { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 9px; background: var(--line); color: var(--hint); margin-right: 6px; }
-  .chip.p1 { background: rgba(239,100,97,.18); color: var(--bad); } .chip.p2 { background: rgba(240,180,41,.18); color: var(--warn); }
-  .chip.me { background: rgba(165,108,240,.2); color: var(--accent); }
-  .empty { color: var(--hint); text-align: center; padding: 28px 10px; }
-  .tabs { display: flex; gap: 6px; margin: 12px 0 2px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 3; overflow-x: auto; }
-  .tabs button { flex: 1 0 auto; min-height: 42px; padding: 6px 12px; border: 0; border-radius: 12px; background: var(--card); color: var(--hint); font: inherit; font-size: 13px; white-space: nowrap; }
-  .tabs button.on { background: var(--accent); color: var(--accent-text); font-weight: 600; }
-  .tabs .n { display: inline-block; min-width: 18px; margin-left: 5px; padding: 0 5px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 11px; }
-  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-  .btns button { flex: 1 1 46%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-size: 14px; }
+  .title { font-weight: 600; letter-spacing: -.02em; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .big { font-size: 40px; font-weight: 500; letter-spacing: -.045em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .bar { height: 2px; background: var(--line); overflow: hidden; margin-top: 10px; }
+  .bar i { display: block; height: 100%; background: var(--text); transition: width .5s var(--ease); }
+  .pct, .mono { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .delta { font-size: 11px; margin-left: 6px; } .up { color: var(--ok); } .down { color: var(--bad); }
+  .chip { display: inline-block; font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; padding: 2px 6px;
+          border: 1px solid var(--line2); border-radius: 5px; color: var(--hint); margin-right: 6px; }
+  .chip.p1 { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+  .chip.p2 { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+  .chip.me { color: var(--text); }
+  .empty { color: var(--hint); text-align: center; padding: 36px 10px; }
+  .tabs { display: flex; gap: 13px; margin: 12px -16px 4px; padding: 0 16px; position: sticky; top: 0; z-index: 3;
+          background: color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+          border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { position: relative; flex: 0 0 auto; padding: 13px 0 12px; border: 0; background: none; color: var(--hint); font-size: 13px; white-space: nowrap; }
+  .tabs button.on { color: var(--text); }
+  .tabs button.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1.5px; background: var(--text); }
+  .tabs .n { margin-left: 4px; font: 500 10px var(--mono); color: var(--bad); vertical-align: super; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .btns button { flex: 1 1 46%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 10px; background: transparent;
+                 color: var(--text); font-size: 14px; transition: transform 160ms var(--ease), background 160ms var(--ease); }
+  .btns button:active, .tile:active, .link:active { transform: scale(.97); }
   .btns button.sel { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
-  .btns button.yes.sel { background: var(--ok); border-color: var(--ok); color: #08210f; }
+  .btns button.yes.sel { background: var(--ok); border-color: var(--ok); color: #000; }
   .btns button.no.sel { background: var(--bad); border-color: var(--bad); color: #fff; }
-  .note { font-size: 13px; color: var(--ok); margin-top: 8px; min-height: 0; }
-  textarea { width: 100%; margin-top: 10px; min-height: 64px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 14px; resize: vertical; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .tile { min-height: 92px; text-align: left; padding: 12px; border: 2px solid transparent; border-radius: 16px; background: var(--card); color: var(--text); font: inherit; }
-  .tile b { display: block; font-size: 15px; margin-bottom: 3px; } .tile span { font-size: 12px; color: var(--hint); }
-  .tile.sel { border-color: var(--accent); }
+  .note { font: 12px var(--mono); color: var(--hint); margin-top: 8px; }
+  textarea { width: 100%; margin-top: 10px; min-height: 64px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line2);
+             background: var(--raise); color: var(--text); font: 14px/1.5 var(--sans); resize: vertical; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tile { min-height: 100px; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+          color: var(--text); transition: transform 160ms var(--ease), border-color 160ms var(--ease); }
+  .tile .idx { display: block; font: 10px var(--mono); color: var(--faint); margin-bottom: 14px; letter-spacing: .08em; }
+  .tile b { display: block; font-size: 14.5px; font-weight: 500; letter-spacing: -.01em; margin-bottom: 3px; }
+  .tile span { font-size: 12px; color: var(--hint); line-height: 1.4; }
+  .tile.sel { border-color: var(--text); }
   .tile.danger b { color: var(--bad); }
-  .step { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line); }
+  .step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
   .step:first-child { border-top: 0; }
-  .dot { flex: 0 0 10px; height: 10px; margin-top: 6px; border-radius: 5px; background: var(--hint); }
-  .dot.now { background: var(--ok); }
-  .hint { font-size: 13px; color: var(--hint); margin: 4px 2px 12px; }
-  #send { position: fixed; left: 12px; right: 12px; bottom: 12px; min-height: 52px; border: 0; border-radius: 14px; background: var(--accent);
-          color: var(--accent-text); font: inherit; font-weight: 600; display: none; z-index: 5; }
-  #toast { position: fixed; left: 12px; right: 12px; bottom: 76px; padding: 12px; border-radius: 12px; background: #333; color: #fff; display: none; z-index: 6; font-size: 13px; }
-  pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; }
+  .dot, .led { flex: 0 0 6px; width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--faint); }
+  .dot.now, .led.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+  .led.warn { background: var(--warn); } .led.bad { background: var(--bad); }
+  .hint { font-size: 12.5px; color: var(--faint); margin: 6px 2px 12px; }
+  .status { display: flex; align-items: center; gap: 8px; margin-top: 4px; font: 11.5px var(--mono); color: var(--hint); }
+  .status .led { margin-top: 0; }
+  .tele { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-top: 14px; }
+  .tele > div { padding: 12px 12px 11px; border-left: 1px solid var(--line); }
+  .tele > div:first-child { border-left: 0; }
+  .tele .k { font: 500 9.5px var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--faint); }
+  .tele .v { font-size: 22px; font-weight: 500; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin-top: 6px; }
+  .tele .v.bad { color: var(--bad); } .tele .v.warn { color: var(--warn); }
+  .list { border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+  .link { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: 0; border-top: 1px solid var(--line);
+          background: none; color: var(--text); text-align: left; font-size: 14px; transition: transform 160ms var(--ease); }
+  .link:first-child { border-top: 0; }
+  .link .grow { flex: 1; min-width: 0; }
+  .link .meta { font: 11.5px var(--mono); color: var(--hint); white-space: nowrap; }
+  .link .arrow { color: var(--faint); font-family: var(--mono); }
+  .meter { height: 2px; background: var(--line); margin-top: 8px; }
+  .meter i { display: block; height: 100%; background: var(--text); }
+  .meter i.warn { background: var(--warn); } .meter i.bad { background: var(--bad); }
+  details.fold summary { list-style: none; cursor: pointer; }
+  details.fold summary::-webkit-details-marker { display: none; }
+  #send { position: fixed; left: 16px; right: 16px; bottom: 14px; min-height: 52px; border: 0; border-radius: 12px; background: var(--accent);
+          color: var(--accent-text); font-weight: 600; display: none; z-index: 5; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: 78px; padding: 12px 14px; border-radius: 12px; background: var(--raise);
+           border: 1px solid var(--line2); color: var(--text); display: none; z-index: 6; font-size: 13px; }
+  pre { white-space: pre-wrap; word-break: break-all; font: 11px var(--mono); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
@@ -70,6 +120,14 @@
 (function () {
   var tg = window.Telegram && window.Telegram.WebApp;
   if (tg) { tg.ready(); tg.expand(); }
+  // вне Telegram скрипт всё равно отдаёт colorScheme = light, поэтому верим ему только внутри Telegram
+  var theme = tg && tg.platform && tg.platform !== 'unknown' && tg.colorScheme ? tg.colorScheme : (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.dataset.theme = theme;
+  try {
+    var BG = theme === 'light' ? '#faf9f5' : '#000000';
+    tg.setHeaderColor(BG); tg.setBackgroundColor(BG); if (tg.setBottomBarColor) tg.setBottomBarColor(BG);
+    tg.MainButton.setParams({ color: theme === 'light' ? '#141413' : '#ededea', text_color: theme === 'light' ? '#faf9f5' : '#000000' });
+  } catch (e) {}
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -97,16 +155,26 @@
   var head = document.getElementById('head'), tabsEl = document.getElementById('tabs'),
       view = document.getElementById('view'), sendBtn = document.getElementById('send'), toast = document.getElementById('toast');
 
-  head.appendChild(el('h1', null, '🟣 Штаб'));
+  head.appendChild(el('h1', null, 'Штаб'));
   if (!d) {
-    head.appendChild(el('div', 'sub', 'Открой Mini App кнопкой «📱 Штаб» в чате с ботом: данные приходят оттуда.'));
+    head.appendChild(el('div', 'sub', 'Открой Mini App кнопкой «Штаб» в чате с ботом: данные приходят оттуда.'));
     view.appendChild(el('div', 'empty', 'Нет данных'));
     var keys = (location.hash || '').replace(/^#/, '').split('&').map(function (p) { return p.split('=')[0]; }).filter(Boolean);
     view.appendChild(el('div', 'sub', 'Диагностика: в адресе параметры [' + keys.join(', ') + '], длина ' + (location.hash || '').length +
       ', платформа ' + (tg && tg.platform ? tg.platform : 'нет') + ', initData ' + (tg && tg.initData ? 'есть' : 'пусто')));
     return;
   }
-  head.appendChild(el('div', 'sub', 'Обновлено ' + (d.t || '—') + ' · данные обновляются раз в 5 минут'));
+  // Возраст снимка = пульс ПК: снимок пишет компьютер раз в 5 минут; старый снимок значит, что ПК спит или выключен.
+  var age = (function () {
+    var m = /(\d{2})\.(\d{2}) (\d{2}):(\d{2})/.exec(d.t || ''); if (!m) return null;
+    var now = new Date(), t = new Date(now.getFullYear(), +m[2] - 1, +m[1], +m[3], +m[4]);
+    return Math.round((now - t) / 60000);
+  })();
+  var st = el('div', 'status'), led = el('span', 'led ' + (age === null ? '' : age <= 10 ? 'ok' : age <= 60 ? 'warn' : 'bad'));
+  st.appendChild(led);
+  st.appendChild(el('span', null, age === null ? 'снимок ' + (d.t || '—') : age <= 10 ? 'ПК в сети · ' + d.t.slice(-5) + (d.pc ? ' · аптайм ' + d.pc[0] : '')
+    : age <= 60 ? 'снимок отстаёт на ' + age + ' мин' : 'ПК молчит с ' + d.t));
+  head.appendChild(st);
 
   // ---- отправка действий боту ----
   // По документации Telegram: из кнопки клавиатуры работает sendData (initData пуст); из кнопки меню — ссылка t.me/бот?start=…
@@ -160,7 +228,7 @@
   var docsAuthorFilter = 'all';
   var docsSortBy = 'date';
   var askN = d.ask ? d.ask.length : 0;
-  var TABS = [['home', '🏠 Главное'], ['dec', '🗳 Решения'], ['work', '🛠 Работа'], ['docs', '📚 Документы'], ['sys', '⚙️ Система'], ['arc', '🗄 Архив']];
+  var TABS = [['home', 'Сводка'], ['dec', 'Решения'], ['work', 'Работа'], ['docs', 'Файлы'], ['sys', 'Пульт'], ['arc', 'Архив']];
   function drawTabs() {
     clear(tabsEl);
     TABS.forEach(function (t) {
@@ -182,76 +250,85 @@
   function prioChip(p) { return el('span', 'chip p' + (p || 2), p === 1 ? 'срочно' : (p === 2 ? 'важно' : 'обычно')); }
   function ownerChip(o) { return el('span', 'chip' + (o === 'claude' || o === 'roxy' ? ' me' : ''), o === 'claude' ? 'Клод' : (o === 'roxy' ? 'ROXY' : (o === 'victoria' ? 'ты' : (o || 'не назначено')))); }
 
-  // ---- Главное ----
+  // ---- Главное: приборная панель ----
+  function meterRow(pct) {
+    var m = el('div', 'meter'), i = el('i', pct >= 95 ? 'bad' : (pct >= 80 ? 'warn' : ''));
+    i.style.width = Math.max(0, Math.min(100, pct)) + '%'; m.appendChild(i); return m;
+  }
+  function winState(t) { return String(t || '').split('(')[0].trim() || '—'; }
   function home() {
-    var sum = el('div', 'card'), row = el('div', 'row');
-    row.appendChild(el('span', 'big', (d.all || 0) + '%'));
-    row.appendChild(el('span', 'sub', 'общая готовность Штаба'));
-    sum.appendChild(row); sum.appendChild(bar(d.all || 0));
-    if (d.cards) sum.appendChild(el('div', 'sub', 'Задач: ' + d.cards[0] + ', сделано ' + d.cards[1] + (d.cards[2] ? ', в работе ' + d.cards[2] : '')));
-    view.appendChild(sum);
+    var open = d.cards ? d.cards[0] - d.cards[1] : null, inWork = d.cards ? d.cards[2] : null;
+    var tele = el('div', 'tele');
+    function cell(k, v, cls, onTap) {
+      var c = el('div'); c.appendChild(el('div', 'k', k)); c.appendChild(el('div', 'v' + (cls ? ' ' + cls : ''), v === null ? '—' : String(v)));
+      if (onTap) { c.style.cursor = 'pointer'; c.addEventListener('click', onTap); }
+      tele.appendChild(c);
+    }
+    cell('Открыто', open); cell('В работе', inWork, null, function () { go('work'); });
+    cell('Решить', askN, askN ? 'bad' : null, function () { go('dec'); });
+    cell('Службы', d.sv ? d.sv[0] + '/' + d.sv[1] : null, d.sv && d.sv[0] !== d.sv[1] ? 'warn' : null, function () { go('sys'); });
+    view.appendChild(tele);
 
     if (askN) {
-      var a = el('div', 'card');
-      a.appendChild(el('div', null, '🗳 Ждут твоего решения: ' + askN));
-      a.appendChild(el('div', 'sub', 'Принять, отклонить или прокомментировать можно в одну минуту.'));
-      var go1 = el('div', 'btns'), b1 = el('button', null, 'Открыть решения →');
-      b1.addEventListener('click', function () { go('dec'); }); go1.appendChild(b1); a.appendChild(go1);
-      view.appendChild(a);
-    }
-
-    if (d.pc) {
-      var pcCard = el('div', 'card'), pcRow = el('div', 'row');
-      pcRow.appendChild(el('span', null, '💻 Пульс ПК'));
-      pcRow.appendChild(el('span', 'sub', 'аптайм ' + d.pc[0] + ' · RAM ' + d.pc[1] + ' ГБ'));
-      pcCard.appendChild(pcRow);
-      pcCard.appendChild(bar(d.pc[2], 'var(--ok)'));
-      pcCard.appendChild(el('div', 'sub', 'Клод: ' + d.pc[3] + ' · ROXY: ' + d.pc[4] + (d.pc[5] ? ' · в очереди: ' + d.pc[5] : '')));
-      var pcb = el('div', 'btns'), pcbb = el('button', null, 'Пульс подробно →');
-      pcbb.addEventListener('click', function () {
-        setAct('m:pc', { a: 'cmd', c: 'pc' });
-        submit();
+      view.appendChild(el('h2', null, 'Ждёт тебя'));
+      var l = el('div', 'list');
+      d.ask.slice(0, 3).forEach(function (x) {
+        var r = el('button', 'link'), g = el('div', 'grow');
+        g.appendChild(el('div', null, x[1])); g.appendChild(el('div', 'meta', x[0]));
+        r.appendChild(g); r.appendChild(el('span', 'arrow', '→'));
+        r.addEventListener('click', function () { go('dec'); }); l.appendChild(r);
       });
-      pcb.appendChild(pcbb); pcCard.appendChild(pcb);
-      view.appendChild(pcCard);
-    }
-
-    if (d.sv) {
-      var sc = el('div', 'card'), sr = el('div', 'row');
-      sr.appendChild(el('span', null, '🧩 Сервисы'));
-      sr.appendChild(el('span', 'pct', d.sv[0] + ' из ' + d.sv[1] + ' в порядке'));
-      sc.appendChild(sr); sc.appendChild(bar(Math.round(100 * d.sv[0] / Math.max(1, d.sv[1])), d.sv[0] === d.sv[1] ? 'var(--ok)' : 'var(--warn)'));
-      if (d.sv[2] && d.sv[2].length) sc.appendChild(el('div', 'sub', 'Внимание: ' + d.sv[2].join(', ')));
-      var sb = el('div', 'btns'), sbb = el('button', null, 'Подробно →');
-      sbb.addEventListener('click', function () { go('sys'); }); sb.appendChild(sbb); sc.appendChild(sb);
-      view.appendChild(sc);
+      view.appendChild(l);
     }
 
     if (d.lim && d.lim.length) {
-      view.appendChild(el('h2', null, 'Кто на связи'));
+      view.appendChild(el('h2', null, 'Агенты и лимиты'));
+      var al = el('div', 'list');
       d.lim.forEach(function (x) {
-        var c = el('div', 'card'), r = el('div', 'row');
-        r.appendChild(el('span', null, x[0]));
-        r.appendChild(el('span', 'sub', (x[1] !== null ? x[1] + '% · ' : '') + (x[2] || '')));
-        c.appendChild(r);
-        if (x[1] !== null) c.appendChild(bar(x[1], limColor(x[1])));
-        view.appendChild(c);
+        var r = el('div', 'link'), g = el('div', 'grow'), top = el('div', 'row');
+        top.appendChild(el('span', null, x[0]));
+        top.appendChild(el('span', 'meta', (x[1] !== null ? x[1] + '% · ' : '') + (x[2] || '')));
+        g.appendChild(top); if (x[1] !== null) g.appendChild(meterRow(x[1]));
+        r.appendChild(g); al.appendChild(r);
       });
-      view.appendChild(el('div', 'hint', 'Проценты — сколько лимита израсходовано, «откат» — когда он обновится.'));
+      view.appendChild(al);
+      view.appendChild(el('div', 'hint', 'Процент — сколько лимита потрачено; время — когда он откатится. Данные на ' + (d.t || '—') + '.'));
+    }
+
+    if (d.pc) {
+      view.appendChild(el('h2', null, 'Компьютер'));
+      var pl = el('div', 'list');
+      function pcRow(k, v) { var r = el('div', 'link'); r.appendChild(el('span', 'grow', k)); r.appendChild(el('span', 'meta', v)); pl.appendChild(r); }
+      pcRow('Работает без перезагрузки', d.pc[0]);
+      pcRow('Память занята', d.pc[2] + '% · свободно ' + d.pc[1] + ' ГБ');
+      pcRow('Окно Клода', winState(d.pc[3]));
+      pcRow('Окно ROXY', winState(d.pc[4]));
+      pcRow('Ждут в очереди', String(d.pc[5] || 0));
+      var more = el('button', 'link'); more.appendChild(el('span', 'grow', 'Пульс подробно, поднять окно')); more.appendChild(el('span', 'arrow', '→'));
+      more.addEventListener('click', function () { setAct('m:pc', { a: 'cmd', c: 'pc' }); submit(); });
+      pl.appendChild(more);
+      view.appendChild(pl);
+    }
+
+    if (d.sv && d.sv[2] && d.sv[2].length) {
+      view.appendChild(el('h2', null, 'Службы без ответа'));
+      var sl = el('div', 'list');
+      d.sv[2].forEach(function (n) { var r = el('div', 'link'); r.appendChild(el('span', 'led warn')); r.appendChild(el('span', 'grow', n)); sl.appendChild(r); });
+      view.appendChild(sl);
     }
 
     if (d.dirs && d.dirs.length) {
-      view.appendChild(el('h2', null, 'Как идёт по направлениям'));
+      var f = el('details', 'fold'), sm = el('summary'); sm.appendChild(el('h2', null, 'Направления · оценка агентов'));
+      f.appendChild(sm);
+      var dl = el('div', 'list');
       d.dirs.forEach(function (x) {
-        var c = el('div', 'card'), r = el('div', 'row');
-        r.appendChild(el('span', null, x[0]));
-        var p = el('span', 'pct', x[1] + '%');
-        if (x.length > 2 && x[2] !== null && x[2] !== x[1]) {
-          var diff = x[1] - x[2];
-          p.appendChild(el('span', 'delta ' + (diff > 0 ? 'up' : 'down'), (diff > 0 ? '▲ +' : '▼ ') + diff));
-        }
-        r.appendChild(p); c.appendChild(r); c.appendChild(bar(x[1])); view.appendChild(c);
+        var r = el('div', 'link'); r.appendChild(el('span', 'grow', x[0]));
+        var m = el('span', 'meta', x[1] + '%');
+        if (x.length > 2 && x[2] !== null && x[2] !== x[1]) { var diff = x[1] - x[2]; m.appendChild(el('span', 'delta ' + (diff > 0 ? 'up' : 'down'), (diff > 0 ? '+' : '') + diff)); }
+        r.appendChild(m); dl.appendChild(r);
       });
+      f.appendChild(dl); view.appendChild(f);
+      view.appendChild(el('div', 'hint', 'Проценты направлений ставят агенты вручную: это оценка, а не замер.'));
     }
   }
 
@@ -267,16 +344,16 @@
       if (yes) yes.classList.toggle('sel', !!v && v.v === 'yes');
       if (no) no.classList.toggle('sel', !!v && v.v === 'no');
       arc.classList.toggle('sel', !!a);
-      note.textContent = [v ? (v.v === 'yes' ? '✅ принято' : '❌ отклонено') : '', a ? '🗄 уйдёт в архив' : '',
-        queue['c:' + id] ? (inMenu ? '💬 текст комментария напишешь в чате' : '💬 комментарий добавлен') : ''].filter(Boolean).join(' · ');
+      note.textContent = [v ? (v.v === 'yes' ? 'принято' : 'отклонено') : '', a ? 'уйдёт в архив' : '',
+        queue['c:' + id] ? (inMenu ? 'текст комментария напишешь в чате' : 'комментарий добавлен') : ''].filter(Boolean).join(' · ');
     }
     if (decision) {
-      yes = el('button', 'yes', '✅ Принять'); no = el('button', 'no', '❌ Отклонить');
+      yes = el('button', 'yes', 'Принять'); no = el('button', 'no', 'Отклонить');
       yes.addEventListener('click', function () { var cur = queue['v:' + id]; setAct('v:' + id, cur && cur.v === 'yes' ? null : { a: 'vote', id: id, v: 'yes' }); paint(); });
       no.addEventListener('click', function () { var cur = queue['v:' + id]; setAct('v:' + id, cur && cur.v === 'no' ? null : { a: 'vote', id: id, v: 'no' }); paint(); });
       btns.appendChild(yes); btns.appendChild(no);
     }
-    var cm = el('button', null, '💬 Комментарий'), arc = el('button', null, '🗄 В архив');
+    var cm = el('button', null, 'Комментарий'), arc = el('button', null, 'В архив');
     cm.addEventListener('click', function () {
       if (inMenu) { setAct('c:' + id, queue['c:' + id] ? null : { a: 'comment', id: id, t: '' }); paint(); return; }
       if (ta) return;
@@ -294,7 +371,7 @@
   }
 
   function decisions() {
-    if (!askN) { view.appendChild(el('div', 'empty', '🎉 Ничего не ждёт твоего решения')); return; }
+    if (!askN) { view.appendChild(el('div', 'empty', 'Решений не ждёт ничего')); return; }
     view.appendChild(el('div', 'hint', 'Отметь нужное у каждой карточки и нажми «Отправить» внизу. «Принять» — делаем, «Отклонить» — не делаем, «В архив» — убрать с доски. Твой голос ставится только отсюда.'));
     d.ask.forEach(function (x) { view.appendChild(cardItem(x, true)); });
   }
@@ -321,22 +398,22 @@
 
   // ---- Система ----
   var TILES = [
-    ['sync', '🔁', 'Синхронизация', 'Обновить карту, сервисы, доску; агенты сверят свои части'],
-    ['services', '🧩', 'Все сервисы', 'Что работает, что по расписанию, что молчит'],
-    ['status', '📊', 'Статус системы', 'Что запущено, очередь, память'],
-    ['pc', '💻', 'Пульс ПК', 'В сети ли ПК, окна агентов, поднять и разбудить'],
-    ['board', '📋', 'Доска задач', 'Сводка: что в работе и что ждёт'],
-    ['orders', '🏆', 'Лучшие заказы', 'Свежие с бирж, лучшие сверху, кнопка «Черновик»'],
-    ['modes', '🪟', 'Режимы связи', 'Окна, фон или авто для Клода и ROXY'],
-    ['limits', '🚦', 'Лимиты подробно', 'Остаток и время отката'],
-    ['pause', '🛑', 'Стоп / пауза', 'Отменить очередь задач', true]
+    ['sync', '', 'Синхронизация', 'Обновить карту, сервисы, доску; агенты сверят свои части'],
+    ['services', '', 'Все сервисы', 'Что работает, что по расписанию, что молчит'],
+    ['status', '', 'Статус системы', 'Что запущено, очередь, память'],
+    ['pc', '', 'Пульс ПК', 'В сети ли ПК, окна агентов, поднять и разбудить'],
+    ['board', '', 'Доска задач', 'Сводка: что в работе и что ждёт'],
+    ['orders', '', 'Лучшие заказы', 'Свежие с бирж, лучшие сверху, кнопка «Черновик»'],
+    ['modes', '', 'Режимы связи', 'Окна, фон или авто для Клода и ROXY'],
+    ['limits', '', 'Лимиты подробно', 'Остаток и время отката'],
+    ['pause', '', 'Стоп / пауза', 'Отменить очередь задач', true]
   ];
   function system() {
     view.appendChild(el('div', 'hint', 'Нажми плитку и «Отправить»: ответ придёт в чат с ботом. Можно выбрать несколько.'));
     var g = el('div', 'grid');
-    TILES.forEach(function (t) {
+    TILES.forEach(function (t, i) {
       var b = el('button', 'tile' + (t[4] ? ' danger' : '') + (queue['m:' + t[0]] ? ' sel' : ''));
-      b.appendChild(el('b', null, t[1] + ' ' + t[2])); b.appendChild(el('span', null, t[3]));
+      b.appendChild(el('span', 'idx', (i < 9 ? '0' : '') + (i + 1))); b.appendChild(el('b', null, t[2])); b.appendChild(el('span', null, t[3]));
       b.addEventListener('click', function () {
         var on = !queue['m:' + t[0]];
         setAct('m:' + t[0], on ? { a: 'cmd', c: t[0] } : null); b.classList.toggle('sel', on);
@@ -344,8 +421,8 @@
       g.appendChild(b);
     });
     view.appendChild(g);
-    view.appendChild(el('h2', null, 'Куда пишешь'));
-    view.appendChild(el('div', 'card sub', 'Получатель сообщений выбирается кнопкой «🎯» на клавиатуре чата. Голос и скриншот — тоже там.'));
+    view.appendChild(el('h2', null, 'Кому пишешь'));
+    view.appendChild(el('div', 'card sub', 'Получатель сообщений выбирается кнопкой выбора получателя на клавиатуре чата. Голос и скриншот — тоже там.'));
   }
 
   // ---- Архив ----
@@ -405,18 +482,18 @@
       if (cells.every(function(c) { return /^:?-+:?$/.test(c); })) {
         return '';
       }
-      return '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">' +
+      return '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--raise);font-size:12px;">' +
         cells.map(function(c) { return '<span style="flex:1;min-width:60px;">' + c + '</span>'; }).join('') +
         '</div>';
     });
 
     return esc
       .replace(/^### (.*$)/gim, '<h4 style="color:var(--accent);margin:10px 0 4px;font-size:14px;">$1</h4>')
-      .replace(/^## (.*$)/gim, '<h3 style="color:#fff;margin:14px 0 6px;font-size:15px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:3px;">$1</h3>')
-      .replace(/^# (.*$)/gim, '<h2 style="color:#fff;margin:16px 0 8px;font-size:16px;border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:4px;">$1</h2>')
+      .replace(/^## (.*$)/gim, '<h3 style="color:#fff;margin:14px 0 6px;font-size:15px;border-bottom:1px solid var(--raise);padding-bottom:3px;">$1</h3>')
+      .replace(/^# (.*$)/gim, '<h2 style="color:#fff;margin:16px 0 8px;font-size:16px;border-bottom:1px solid var(--line2);padding-bottom:4px;">$1</h2>')
       .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#fff;">$1</strong>')
       .replace(/\*(.*?)\*/gim, '<em style="color:#ddd;">$1</em>')
-      .replace(/`([^`]+)`/gim, '<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;color:#a371f7;font-family:monospace;font-size:12px;">$1</code>')
+      .replace(/`([^`]+)`/gim, '<code style="background:var(--line);padding:2px 6px;border-radius:4px;color:#a371f7;font-family:monospace;font-size:12px;">$1</code>')
       .replace(/^\> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent);margin:8px 0;padding:4px 10px;background:rgba(163,113,247,0.06);color:var(--text-dim);border-radius:0 6px 6px 0;">$1</blockquote>')
       .replace(/^\- (.*$)/gim, '<div style="padding-left:14px;margin:2px 0;">• $1</div>')
       .replace(/\n\n/gim, '<div style="height:8px;"></div>');
@@ -429,7 +506,7 @@
       var savedPw = sessionStorage.getItem("shtab_docs_password");
       if (savedPw) {
         var loadingCard = el('div', 'card');
-        loadingCard.appendChild(el('div', 'title', '🔐 Расшифровка документов...'));
+        loadingCard.appendChild(el('div', 'title', 'Расшифровка документов...'));
         loadingCard.appendChild(el('div', 'hint', 'Применяем ключ сессии...'));
         view.appendChild(loadingCard);
         decryptDocs(savedPw).then(function () {
@@ -442,7 +519,7 @@
       }
 
       var gate = el('div', 'card');
-      gate.appendChild(el('div', 'title', '🔐 Защищённый архив документов'));
+      gate.appendChild(el('div', 'title', 'Защищённый архив документов'));
       gate.appendChild(el('div', 'hint', 'Все 40 внутренних спецификаций, исследований и регламентов зашифрованы AES-256-GCM. Введите пароль (тот же, что от доски):'));
 
       var pBox = el('div');
@@ -456,13 +533,13 @@
       pInput.style.flex = '1';
       pInput.style.padding = '8px 12px';
       pInput.style.borderRadius = '8px';
-      pInput.style.border = '1px solid rgba(255,255,255,0.12)';
-      pInput.style.background = 'rgba(0,0,0,0.2)';
+      pInput.style.border = '1px solid var(--line2)';
+      pInput.style.background = 'var(--raise)';
       pInput.style.color = 'var(--text)';
       pInput.style.fontSize = '13px';
 
       var pBtn = el('button');
-      pBtn.textContent = '🔓 Войти';
+      pBtn.textContent = 'Войти';
       pBtn.style.padding = '8px 16px';
       pBtn.style.borderRadius = '8px';
       pBtn.style.border = '0';
@@ -486,7 +563,7 @@
           go('docs');
         }).catch(function (e) {
           pBtn.disabled = false;
-          pBtn.textContent = '🔓 Войти';
+          pBtn.textContent = 'Войти';
           pErr.textContent = 'Неверный пароль или ошибка расшифровки.';
         });
       }
@@ -505,7 +582,7 @@
     var archived = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
 
     var intro = el('div', 'card');
-    intro.appendChild(el('div', 'title', '📚 Документы и Артефакты (' + rawDocs.length + ')'));
+    intro.appendChild(el('div', 'title', 'Документы и Артефакты (' + rawDocs.length + ')'));
     intro.appendChild(el('div', 'hint', 'База знаний, исследования, спецификации и регламенты Штаба.'));
 
     // Строка поиска
@@ -517,13 +594,13 @@
 
     var searchInput = el('input');
     searchInput.type = 'text';
-    searchInput.placeholder = '🔍 Поиск по названию, задаче, автору...';
+    searchInput.placeholder = 'Поиск по названию, задаче, автору...';
     searchInput.value = docsSearchTerm;
     searchInput.style.flex = '1';
     searchInput.style.padding = '8px 12px';
     searchInput.style.borderRadius = '8px';
-    searchInput.style.border = '1px solid rgba(255,255,255,0.12)';
-    searchInput.style.background = 'rgba(0,0,0,0.2)';
+    searchInput.style.border = '1px solid var(--line2)';
+    searchInput.style.background = 'var(--raise)';
     searchInput.style.color = 'var(--text)';
     searchInput.style.fontSize = '13px';
 
@@ -531,18 +608,18 @@
     clearBtn.textContent = '✕';
     clearBtn.style.padding = '8px 12px';
     clearBtn.style.borderRadius = '8px';
-    clearBtn.style.border = '1px solid rgba(255,255,255,0.08)';
-    clearBtn.style.background = 'rgba(255,255,255,0.04)';
+    clearBtn.style.border = '1px solid var(--line)';
+    clearBtn.style.background = 'var(--raise)';
     clearBtn.style.color = 'var(--text-dim)';
     clearBtn.style.cursor = 'pointer';
     clearBtn.title = 'Очистить поиск';
     clearBtn.style.display = docsSearchTerm ? 'inline-block' : 'none';
 
     var arcToggle = el('button');
-    arcToggle.textContent = docsShowArchived ? '📁 Скрыть архив' : '🗄 Архив (' + archived.length + ')';
+    arcToggle.textContent = docsShowArchived ? 'Скрыть архив' : 'Архив (' + archived.length + ')';
     arcToggle.style.padding = '8px 12px';
     arcToggle.style.borderRadius = '8px';
-    arcToggle.style.border = '1px solid rgba(255,255,255,0.12)';
+    arcToggle.style.border = '1px solid var(--line2)';
     arcToggle.style.background = docsShowArchived ? 'var(--accent)' : 'var(--card)';
     arcToggle.style.color = docsShowArchived ? '#fff' : 'var(--text)';
     arcToggle.style.fontSize = '12px';
@@ -557,12 +634,12 @@
     searchBox.appendChild(arcToggle);
 
     var lockBtn = el('button');
-    lockBtn.textContent = '🔒 Запереть';
+    lockBtn.textContent = 'Запереть';
     lockBtn.title = 'Очистить ключ сессии и заблокировать доступ';
     lockBtn.style.padding = '8px 10px';
     lockBtn.style.borderRadius = '8px';
-    lockBtn.style.border = '1px solid rgba(255,255,255,0.08)';
-    lockBtn.style.background = 'rgba(255,255,255,0.04)';
+    lockBtn.style.border = '1px solid var(--line)';
+    lockBtn.style.background = 'var(--raise)';
     lockBtn.style.color = 'var(--text-dim)';
     lockBtn.style.fontSize = '12px';
     lockBtn.style.cursor = 'pointer';
@@ -588,8 +665,8 @@
       c.style.padding = '4px 10px';
       c.style.borderRadius = '14px';
       c.style.fontSize = '11px';
-      c.style.border = active ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
-      c.style.background = active ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      c.style.border = active ? '1px solid var(--accent)' : '1px solid var(--line)';
+      c.style.background = active ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
       c.style.color = active ? '#fff' : 'var(--text-dim)';
       c.style.cursor = 'pointer';
       c.addEventListener('click', onClick);
@@ -601,28 +678,28 @@
       updateFilterButtons();
       renderList();
     });
-    var chipRoxy = makeChip('🤖 ROXY', docsAuthorFilter === 'roxy', function () {
+    var chipRoxy = makeChip('ROXY', docsAuthorFilter === 'roxy', function () {
       docsAuthorFilter = 'roxy';
       updateFilterButtons();
       renderList();
     });
-    var chipClaude = makeChip('🧠 Claude', docsAuthorFilter === 'claude', function () {
+    var chipClaude = makeChip('Claude', docsAuthorFilter === 'claude', function () {
       docsAuthorFilter = 'claude';
       updateFilterButtons();
       renderList();
     });
 
     function updateFilterButtons() {
-      chipAll.style.border = docsAuthorFilter === 'all' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
-      chipAll.style.background = docsAuthorFilter === 'all' ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      chipAll.style.border = docsAuthorFilter === 'all' ? '1px solid var(--accent)' : '1px solid var(--line)';
+      chipAll.style.background = docsAuthorFilter === 'all' ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
       chipAll.style.color = docsAuthorFilter === 'all' ? '#fff' : 'var(--text-dim)';
 
-      chipRoxy.style.border = docsAuthorFilter === 'roxy' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
-      chipRoxy.style.background = docsAuthorFilter === 'roxy' ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      chipRoxy.style.border = docsAuthorFilter === 'roxy' ? '1px solid var(--accent)' : '1px solid var(--line)';
+      chipRoxy.style.background = docsAuthorFilter === 'roxy' ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
       chipRoxy.style.color = docsAuthorFilter === 'roxy' ? '#fff' : 'var(--text-dim)';
 
-      chipClaude.style.border = docsAuthorFilter === 'claude' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)';
-      chipClaude.style.background = docsAuthorFilter === 'claude' ? 'rgba(163,113,247,0.22)' : 'rgba(255,255,255,0.04)';
+      chipClaude.style.border = docsAuthorFilter === 'claude' ? '1px solid var(--accent)' : '1px solid var(--line)';
+      chipClaude.style.background = docsAuthorFilter === 'claude' ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
       chipClaude.style.color = docsAuthorFilter === 'claude' ? '#fff' : 'var(--text-dim)';
     }
 
@@ -630,9 +707,9 @@
     filterRow.appendChild(chipRoxy);
     filterRow.appendChild(chipClaude);
 
-    var sortBtn = makeChip(docsSortBy === 'date' ? '⚡ Свежие' : '🔤 А-Я', true, function () {
+    var sortBtn = makeChip(docsSortBy === 'date' ? 'Свежие' : 'А-Я', true, function () {
       docsSortBy = (docsSortBy === 'date') ? 'title' : 'date';
-      sortBtn.textContent = (docsSortBy === 'date') ? '⚡ Свежие' : '🔤 А-Я';
+      sortBtn.textContent = (docsSortBy === 'date') ? 'Свежие' : 'А-Я';
       renderList();
     });
     filterRow.appendChild(sortBtn);
@@ -652,7 +729,7 @@
     function renderList() {
       clear(listContainer);
       archived = JSON.parse(localStorage.getItem('shtab_archived_docs') || '[]');
-      arcToggle.textContent = docsShowArchived ? '📁 Скрыть архив' : '🗄 Архив (' + archived.length + ')';
+      arcToggle.textContent = docsShowArchived ? 'Скрыть архив' : 'Архив (' + archived.length + ')';
 
       var filtered = rawDocs.filter(function (d) {
         var isArchived = archived.indexOf(d.id) !== -1;
@@ -707,7 +784,7 @@
           var isDocArchived = archived.indexOf(doc.id) !== -1;
           var item = el('div', 'item');
           item.style.padding = '10px 0';
-          item.style.borderTop = '1px solid rgba(255,255,255,0.06)';
+          item.style.borderTop = '1px solid var(--raise)';
 
           var topRow = el('div');
           topRow.style.display = 'flex';
@@ -750,12 +827,12 @@
           tldrBox.style.borderRadius = '0 8px 8px 0';
           tldrBox.style.fontSize = '12px';
           tldrBox.style.lineHeight = '1.5';
-          tldrBox.style.color = '#e9d5ff';
+          tldrBox.style.color = 'var(--text)';
 
           var tldrHeader = el('div');
           tldrHeader.style.fontWeight = '600';
           tldrHeader.style.marginBottom = '4px';
-          tldrHeader.textContent = '💡 Ключевая суть (TL;DR):';
+          tldrHeader.textContent = 'Ключевая суть (TL;DR):';
           tldrBox.appendChild(tldrHeader);
 
           var summBullets = (doc.summary || '').split(/[\.\n]/).filter(function(s) { return s.trim().length > 10; });
@@ -776,23 +853,23 @@
 
           // Кнопка Суть (TL;DR)
           var tldrBtn = el('button');
-          tldrBtn.textContent = '💡 Суть';
+          tldrBtn.textContent = 'Суть';
           tldrBtn.style.padding = '6px 10px';
           tldrBtn.style.fontSize = '12px';
           tldrBtn.style.borderRadius = '8px';
-          tldrBtn.style.border = '1px solid rgba(163,113,247,0.4)';
-          tldrBtn.style.background = 'rgba(163,113,247,0.08)';
+          tldrBtn.style.border = '1px solid var(--line2)';
+          tldrBtn.style.background = 'var(--raise)';
           tldrBtn.style.color = 'var(--accent)';
           tldrBtn.style.cursor = 'pointer';
           tldrBtn.addEventListener('click', function () {
             var isO = tldrBox.style.display === 'block';
             tldrBox.style.display = isO ? 'none' : 'block';
-            tldrBtn.style.background = isO ? 'rgba(163,113,247,0.08)' : 'rgba(163,113,247,0.25)';
+            tldrBtn.style.background = isO ? 'var(--raise)' : 'rgba(163,113,247,0.25)';
           });
 
           // Кнопка Читать
           var readBtn = el('button');
-          readBtn.textContent = '📖 Читать';
+          readBtn.textContent = 'Читать';
           readBtn.style.padding = '6px 12px';
           readBtn.style.fontSize = '12px';
           readBtn.style.borderRadius = '8px';
@@ -805,7 +882,7 @@
           contentBox.style.display = 'none';
           contentBox.style.marginTop = '10px';
           contentBox.style.padding = '12px';
-          contentBox.style.background = 'rgba(0,0,0,0.35)';
+          contentBox.style.background = 'var(--raise)';
           contentBox.style.borderRadius = '8px';
           contentBox.style.fontSize = '13px';
           contentBox.style.lineHeight = '1.6';
@@ -820,18 +897,18 @@
               readBtn.textContent = '▲ Свернуть';
             } else {
               contentBox.style.display = 'none';
-              readBtn.textContent = '📖 Читать';
+              readBtn.textContent = 'Читать';
             }
           });
 
           // Кнопка Копировать
           var copyBtn = el('button');
-          copyBtn.textContent = '📋 Копия';
+          copyBtn.textContent = 'Копия';
           copyBtn.style.padding = '6px 10px';
           copyBtn.style.fontSize = '12px';
           copyBtn.style.borderRadius = '8px';
           copyBtn.style.border = '0';
-          copyBtn.style.background = 'rgba(255,255,255,0.06)';
+          copyBtn.style.background = 'var(--raise)';
           copyBtn.style.color = 'var(--text)';
           copyBtn.style.cursor = 'pointer';
           copyBtn.title = 'Скопировать текст Markdown в буфер';
@@ -849,12 +926,12 @@
 
           // Кнопка Скачать .md
           var dlBtn = el('button');
-          dlBtn.textContent = '📥 .md';
+          dlBtn.textContent = '.md';
           dlBtn.style.padding = '6px 10px';
           dlBtn.style.fontSize = '12px';
           dlBtn.style.borderRadius = '8px';
           dlBtn.style.border = '0';
-          dlBtn.style.background = 'rgba(255,255,255,0.06)';
+          dlBtn.style.background = 'var(--raise)';
           dlBtn.style.color = 'var(--text)';
           dlBtn.style.cursor = 'pointer';
           dlBtn.title = 'Скачать файл .md на устройство';
@@ -874,7 +951,7 @@
 
           // Кнопка Комментировать
           var commBtn = el('button');
-          commBtn.textContent = '💬 Комментировать';
+          commBtn.textContent = 'Комментировать';
           commBtn.style.padding = '6px 12px';
           commBtn.style.fontSize = '12px';
           commBtn.style.borderRadius = '8px';
@@ -892,12 +969,12 @@
 
           // Кнопка В архив / Восстановить
           var arcBtn = el('button');
-          arcBtn.textContent = isDocArchived ? '📥 Восстановить' : '🗄 В архив';
+          arcBtn.textContent = isDocArchived ? 'Восстановить' : 'В архив';
           arcBtn.style.padding = '6px 10px';
           arcBtn.style.fontSize = '12px';
           arcBtn.style.borderRadius = '8px';
           arcBtn.style.border = '0';
-          arcBtn.style.background = 'rgba(255,255,255,0.04)';
+          arcBtn.style.background = 'var(--raise)';
           arcBtn.style.color = 'var(--text-dim)';
           arcBtn.style.cursor = 'pointer';
           arcBtn.addEventListener('click', function () {
