@@ -122,7 +122,7 @@
     sendBtn.textContent = label;
     sendBtn.style.display = (n && !inTelegram) ? 'block' : 'none';
   }
-  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p', modes: 'r', services: 'v', sync: 'y' };
+  var CMD_LETTER = { status: 's', limits: 'l', board: 'b', orders: 'o', pause: 'p', modes: 'r', services: 'v', sync: 'y', pc: 'k' };
   function buildLink() {
     var parts = [];
     Object.keys(queue).forEach(function (k) {
@@ -198,6 +198,22 @@
       var go1 = el('div', 'btns'), b1 = el('button', null, 'Открыть решения →');
       b1.addEventListener('click', function () { go('dec'); }); go1.appendChild(b1); a.appendChild(go1);
       view.appendChild(a);
+    }
+
+    if (d.pc) {
+      var pcCard = el('div', 'card'), pcRow = el('div', 'row');
+      pcRow.appendChild(el('span', null, '💻 Пульс ПК'));
+      pcRow.appendChild(el('span', 'sub', 'аптайм ' + d.pc[0] + ' · RAM ' + d.pc[1] + ' ГБ'));
+      pcCard.appendChild(pcRow);
+      pcCard.appendChild(bar(d.pc[2], 'var(--ok)'));
+      pcCard.appendChild(el('div', 'sub', 'Клод: ' + d.pc[3] + ' · ROXY: ' + d.pc[4] + (d.pc[5] ? ' · в очереди: ' + d.pc[5] : '')));
+      var pcb = el('div', 'btns'), pcbb = el('button', null, 'Пульс подробно →');
+      pcbb.addEventListener('click', function () {
+        setAct('m:pc', { a: 'cmd', c: 'pc' });
+        submit();
+      });
+      pcb.appendChild(pcbb); pcCard.appendChild(pcb);
+      view.appendChild(pcCard);
     }
 
     if (d.sv) {
@@ -308,6 +324,7 @@
     ['sync', '🔁', 'Синхронизация', 'Обновить карту, сервисы, доску; агенты сверят свои части'],
     ['services', '🧩', 'Все сервисы', 'Что работает, что по расписанию, что молчит'],
     ['status', '📊', 'Статус системы', 'Что запущено, очередь, память'],
+    ['pc', '💻', 'Пульс ПК', 'В сети ли ПК, окна агентов, поднять и разбудить'],
     ['board', '📋', 'Доска задач', 'Сводка: что в работе и что ждёт'],
     ['orders', '🏆', 'Лучшие заказы', 'Свежие с бирж, лучшие сверху, кнопка «Черновик»'],
     ['modes', '🪟', 'Режимы связи', 'Окна, фон или авто для Клода и ROXY'],
