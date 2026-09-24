@@ -95,6 +95,13 @@
           background: none; color: var(--text); text-align: left; font-size: 14px; transition: transform 160ms var(--ease); }
   .link:first-child { border-top: 0; }
   .link .grow { flex: 1; min-width: 0; }
+  .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ttl { cursor: pointer; }
+  .ttl::after { content: '  +'; font: 12px var(--mono); color: var(--faint); white-space: pre; }
+  .open > .ttl::after { content: '  −'; }
+  .more { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line2); }
+  .more .desc { font-size: 13.5px; line-height: 1.55; color: var(--text-dim); overflow-wrap: anywhere; }
+  .more .meta { font: 11px var(--mono); color: var(--faint); margin-top: 8px; }
   .link .meta { font: 11.5px var(--mono); color: var(--hint); white-space: nowrap; }
   .link .arrow { color: var(--faint); font-family: var(--mono); }
   .meter { height: 2px; background: var(--line); margin-top: 8px; }
@@ -165,16 +172,30 @@
     return;
   }
   // Возраст снимка = пульс ПК: снимок пишет компьютер раз в 5 минут; старый снимок значит, что ПК спит или выключен.
-  var age = (function () {
-    var m = /(\d{2})\.(\d{2}) (\d{2}):(\d{2})/.exec(d.t || ''); if (!m) return null;
-    var now = new Date(), t = new Date(now.getFullYear(), +m[2] - 1, +m[1], +m[3], +m[4]);
-    return Math.round((now - t) / 60000);
-  })();
-  var st = el('div', 'status'), led = el('span', 'led ' + (age === null ? '' : age <= 10 ? 'ok' : age <= 60 ? 'warn' : 'bad'));
-  st.appendChild(led);
-  st.appendChild(el('span', null, age === null ? 'снимок ' + (d.t || '—') : age <= 10 ? 'ПК в сети · ' + d.t.slice(-5) + (d.pc ? ' · аптайм ' + d.pc[0] : '')
-    : age <= 60 ? 'снимок отстаёт на ' + age + ' мин' : 'ПК молчит с ' + d.t));
-  head.appendChild(st);
+  var st = el('div', 'status'); head.appendChild(st);
+  function paintStatus() {
+    var m = /(\d{2})\.(\d{2}) (\d{2}):(\d{2})/.exec(d.t || ''), age = null;
+    if (m) { var now = new Date(); age = Math.round((now - new Date(now.getFullYear(), +m[2] - 1, +m[1], +m[3], +m[4])) / 60000); }
+    clear(st);
+    st.appendChild(el('span', 'led ' + (age === null ? '' : age <= 10 ? 'ok' : age <= 60 ? 'warn' : 'bad')));
+    st.appendChild(el('span', null, age === null ? 'снимок ' + (d.t || '—') : age <= 10 ? 'ПК в сети · ' + d.t.slice(-5) + (d.pc ? ' · аптайм ' + d.pc[0] : '')
+      : age <= 60 ? 'снимок отстаёт на ' + age + ' мин' : 'ПК молчит с ' + d.t));
+  }
+  paintStatus();
+
+  // Заголовок карточки: нажатие раскрывает описание (полные данные — из шифрованного снимка, sh-q6f)
+  function ttl(text, desc, meta) {
+    var w = el('div'), t = el('div', 'ttl', text), box = null; w.appendChild(t);
+    t.addEventListener('click', function () {
+      if (box) { w.removeChild(box); box = null; w.classList.remove('open'); return; }
+      box = el('div', 'more');
+      box.appendChild(el('div', 'desc', desc || 'Описания нет в кратком снимке. Полный подгрузится сам, если ПК в сети.'));
+      if (meta) box.appendChild(el('div', 'meta', meta));
+      w.appendChild(box); w.classList.add('open');
+    });
+    return w;
+  }
+  function rowMeta(x) { return [x[0], x[7] ? 'обновлено ' + x[7] : ''].filter(Boolean).join(' · '); }
 
   // ---- отправка действий боту ----
   // По документации Telegram: из кнопки клавиатуры работает sendData (initData пуст); из кнопки меню — ссылка t.me/бот?start=…
@@ -274,7 +295,7 @@
       var l = el('div', 'list');
       d.ask.slice(0, 3).forEach(function (x) {
         var r = el('button', 'link'), g = el('div', 'grow');
-        g.appendChild(el('div', null, x[1])); g.appendChild(el('div', 'meta', x[0]));
+        g.appendChild(el('div', 'clamp', x[5] || x[1])); g.appendChild(el('div', 'meta', x[0]));
         r.appendChild(g); r.appendChild(el('span', 'arrow', '→'));
         r.addEventListener('click', function () { go('dec'); }); l.appendChild(r);
       });
@@ -337,7 +358,7 @@
     var id = x[0], c = el('div', 'card'), inMenu = inTelegram && !fromKeyboard;
     var top = el('div'); top.appendChild(prioChip(x[3])); top.appendChild(ownerChip(x[2])); top.appendChild(el('span', 'sub', id));
     c.appendChild(top);
-    c.appendChild(el('div', null, x[1]));
+    c.appendChild(ttl(x[5] || x[1], x[6], rowMeta(x)));
     var btns = el('div', 'btns'), ta = null, note = el('div', 'note'), yes = null, no = null;
     function paint() {
       var v = queue['v:' + id], a = queue['a:' + id];
@@ -387,7 +408,7 @@
       items.forEach(function (x) {
         var s = el('div', 'step'); s.appendChild(el('span', 'dot' + (now ? ' now' : '')));
         var t = el('div'); var m = el('div'); m.appendChild(ownerChip(x[2])); m.appendChild(prioChip(x[3])); m.appendChild(el('span', 'sub', x[0]));
-        t.appendChild(m); t.appendChild(el('div', null, x[1])); s.appendChild(t); c.appendChild(s);
+        t.appendChild(m); t.appendChild(ttl(x[5] || x[1], x[6], rowMeta(x))); s.appendChild(t); c.appendChild(s);
       });
       view.appendChild(c);
     }
@@ -432,7 +453,7 @@
     var c = el('div', 'card');
     d.arch.forEach(function (x) {
       var s = el('div', 'step'); s.appendChild(el('span', 'dot now'));
-      var t = el('div'); t.appendChild(el('span', 'sub', x[0])); t.appendChild(el('div', null, x[1])); s.appendChild(t); c.appendChild(s);
+      var t = el('div'); t.appendChild(el('span', 'sub', x[0])); t.appendChild(ttl(x[2] || x[1], x[3] ? 'Итог: ' + x[3] : '', '')); s.appendChild(t); c.appendChild(s);
     });
     view.appendChild(c);
     view.appendChild(el('div', 'hint', 'Показаны последние. Вся история хранится на доске.'));
@@ -1024,7 +1045,26 @@
 
   if (tab === 'home') home(); else if (tab === 'dec') decisions(); else if (tab === 'work') work(); else if (tab === 'docs') docsView(); else if (tab === 'sys') system(); else archive();
   }
+  // Полный снимок: шифрованный файл, ключ во фрагменте адреса (#k=, на сервер не уходит). Обновляется раз в минуту, пока Штаб открыт.
+  var KEY = (/[#&]k=([A-Za-z0-9_-]{43})/.exec(location.hash) || [])[1];
+  var SNAP_URL = /github\.io$/.test(location.hostname) ? 'https://raw.githubusercontent.com/roxy-migurdi/shtab-app/snap/snap.enc.json' : 'snap/snap.enc.json';
+  function b64u(v) { v = v.replace(/-/g, '+').replace(/_/g, '/'); while (v.length % 4) v += '='; return Uint8Array.from(atob(v), function (c) { return c.charCodeAt(0); }); }
+  async function loadFull() {
+    if (!KEY || !window.crypto || !crypto.subtle) return;
+    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;  // не сбивать набор комментария
+    try {
+      var r = await fetch(SNAP_URL + '?t=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      var e = await r.json();
+      var k = await crypto.subtle.importKey('raw', b64u(KEY), 'AES-GCM', false, ['decrypt']);
+      var full = JSON.parse(new TextDecoder('utf-8').decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64u(e.iv) }, k, b64u(e.ct))));
+      if (d.full && full.t === d.t) return;
+      d = full; d.full = true; askN = d.ask ? d.ask.length : 0;
+      paintStatus(); drawTabs(); if (tab !== 'docs') draw();
+    } catch (err) {}
+  }
   drawTabs(); draw(); refreshSend();
+  loadFull(); setInterval(function () { if (!document.hidden) loadFull(); }, 60000);
 })();
 </script>
 </body>
