@@ -494,7 +494,7 @@
 
     // Fenced code blocks
     esc = esc.replace(/```([a-z0-9_-]*)\n([\s\S]*?)```/gim, function(m, lang, code) {
-      return '<pre style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:10px;overflow-x:auto;font-family:monospace;font-size:12px;color:#c084fc;margin:8px 0;"><code>' + code + '</code></pre>';
+      return '<pre style="background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font-family:var(--mono);font-size:12px;color:var(--text);margin:8px 0;"><code>' + code + '</code></pre>';
     });
 
     // Table rows
@@ -510,12 +510,12 @@
 
     return esc
       .replace(/^### (.*$)/gim, '<h4 style="color:var(--accent);margin:10px 0 4px;font-size:14px;">$1</h4>')
-      .replace(/^## (.*$)/gim, '<h3 style="color:#fff;margin:14px 0 6px;font-size:15px;border-bottom:1px solid var(--raise);padding-bottom:3px;">$1</h3>')
-      .replace(/^# (.*$)/gim, '<h2 style="color:#fff;margin:16px 0 8px;font-size:16px;border-bottom:1px solid var(--line2);padding-bottom:4px;">$1</h2>')
-      .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#fff;">$1</strong>')
-      .replace(/\*(.*?)\*/gim, '<em style="color:#ddd;">$1</em>')
-      .replace(/`([^`]+)`/gim, '<code style="background:var(--line);padding:2px 6px;border-radius:4px;color:#a371f7;font-family:monospace;font-size:12px;">$1</code>')
-      .replace(/^\> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent);margin:8px 0;padding:4px 10px;background:rgba(163,113,247,0.06);color:var(--text-dim);border-radius:0 6px 6px 0;">$1</blockquote>')
+      .replace(/^## (.*$)/gim, '<div style="font-weight:600;letter-spacing:-.01em;margin:16px 0 6px;font-size:15px;">$1</div>')
+      .replace(/^# (.*$)/gim, '<div style="font-weight:600;letter-spacing:-.02em;margin:18px 0 8px;font-size:17px;border-bottom:1px solid var(--line);padding-bottom:6px;">$1</div>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:var(--text);">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em style="color:var(--text);">$1</em>')
+      .replace(/`([^`]+)`/gim, '<code style="background:var(--line);padding:2px 6px;border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;">$1</code>')
+      .replace(/^\> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent);margin:8px 0;padding:4px 10px;background:var(--raise);color:var(--text-dim);border-radius:0 6px 6px 0;">$1</blockquote>')
       .replace(/^\- (.*$)/gim, '<div style="padding-left:14px;margin:2px 0;">• $1</div>')
       .replace(/\n\n/gim, '<div style="height:8px;"></div>');
   }
@@ -565,12 +565,12 @@
       pBtn.style.borderRadius = '8px';
       pBtn.style.border = '0';
       pBtn.style.background = 'var(--accent)';
-      pBtn.style.color = '#fff';
+      pBtn.style.color = 'var(--accent-text)';
       pBtn.style.fontWeight = '600';
       pBtn.style.cursor = 'pointer';
 
       var pErr = el('div');
-      pErr.style.color = '#ef4444';
+      pErr.style.color = 'var(--bad)';
       pErr.style.fontSize = '12px';
       pErr.style.marginTop = '8px';
 
@@ -642,7 +642,7 @@
     arcToggle.style.borderRadius = '8px';
     arcToggle.style.border = '1px solid var(--line2)';
     arcToggle.style.background = docsShowArchived ? 'var(--accent)' : 'var(--card)';
-    arcToggle.style.color = docsShowArchived ? '#fff' : 'var(--text)';
+    arcToggle.style.color = docsShowArchived ? 'var(--accent-text)' : 'var(--text)';
     arcToggle.style.fontSize = '12px';
     arcToggle.style.cursor = 'pointer';
     arcToggle.addEventListener('click', function () {
@@ -687,8 +687,8 @@
       c.style.borderRadius = '14px';
       c.style.fontSize = '11px';
       c.style.border = active ? '1px solid var(--accent)' : '1px solid var(--line)';
-      c.style.background = active ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
-      c.style.color = active ? '#fff' : 'var(--text-dim)';
+      c.style.background = active ? 'var(--accent)' : 'var(--raise)';
+      c.style.color = active ? 'var(--accent-text)' : 'var(--text-dim)';
       c.style.cursor = 'pointer';
       c.addEventListener('click', onClick);
       return c;
@@ -712,16 +712,16 @@
 
     function updateFilterButtons() {
       chipAll.style.border = docsAuthorFilter === 'all' ? '1px solid var(--accent)' : '1px solid var(--line)';
-      chipAll.style.background = docsAuthorFilter === 'all' ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
-      chipAll.style.color = docsAuthorFilter === 'all' ? '#fff' : 'var(--text-dim)';
+      chipAll.style.background = docsAuthorFilter === 'all' ? 'var(--accent)' : 'var(--raise)';
+      chipAll.style.color = docsAuthorFilter === 'all' ? 'var(--accent-text)' : 'var(--text-dim)';
 
       chipRoxy.style.border = docsAuthorFilter === 'roxy' ? '1px solid var(--accent)' : '1px solid var(--line)';
-      chipRoxy.style.background = docsAuthorFilter === 'roxy' ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
-      chipRoxy.style.color = docsAuthorFilter === 'roxy' ? '#fff' : 'var(--text-dim)';
+      chipRoxy.style.background = docsAuthorFilter === 'roxy' ? 'var(--accent)' : 'var(--raise)';
+      chipRoxy.style.color = docsAuthorFilter === 'roxy' ? 'var(--accent-text)' : 'var(--text-dim)';
 
       chipClaude.style.border = docsAuthorFilter === 'claude' ? '1px solid var(--accent)' : '1px solid var(--line)';
-      chipClaude.style.background = docsAuthorFilter === 'claude' ? 'rgba(163,113,247,0.22)' : 'var(--raise)';
-      chipClaude.style.color = docsAuthorFilter === 'claude' ? '#fff' : 'var(--text-dim)';
+      chipClaude.style.background = docsAuthorFilter === 'claude' ? 'var(--accent)' : 'var(--raise)';
+      chipClaude.style.color = docsAuthorFilter === 'claude' ? 'var(--accent-text)' : 'var(--text-dim)';
     }
 
     filterRow.appendChild(chipAll);
@@ -814,7 +814,7 @@
 
           var tChip = el('span', 'prio');
           tChip.textContent = doc.task_id;
-          tChip.style.background = 'rgba(163,113,247,0.18)';
+          tChip.style.background = 'var(--raise)';
           tChip.style.color = 'var(--accent)';
           tChip.style.fontWeight = '600';
           topRow.appendChild(tChip);
@@ -843,7 +843,7 @@
           tldrBox.style.display = 'none';
           tldrBox.style.marginTop = '8px';
           tldrBox.style.padding = '10px 12px';
-          tldrBox.style.background = 'rgba(163,113,247,0.1)';
+          tldrBox.style.background = 'var(--raise)';
           tldrBox.style.borderLeft = '3px solid var(--accent)';
           tldrBox.style.borderRadius = '0 8px 8px 0';
           tldrBox.style.fontSize = '12px';
@@ -885,7 +885,7 @@
           tldrBtn.addEventListener('click', function () {
             var isO = tldrBox.style.display === 'block';
             tldrBox.style.display = isO ? 'none' : 'block';
-            tldrBtn.style.background = isO ? 'var(--raise)' : 'rgba(163,113,247,0.25)';
+            tldrBtn.style.background = isO ? 'var(--raise)' : 'var(--line2)';
           });
 
           // Кнопка Читать
