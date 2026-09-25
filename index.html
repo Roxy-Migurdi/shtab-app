@@ -325,6 +325,9 @@
       pcRow('Окно Клода', winState(d.pc[3]));
       pcRow('Окно ROXY', winState(d.pc[4]));
       pcRow('Ждут в очереди', String(d.pc[5] || 0));
+      if (d.tr && d.tr[0] > 0) {
+        pcRow('Сообщений в пути', d.tr[0] + (d.tr[1] !== null && d.tr[1] !== undefined ? ' · старейшее ' + d.tr[1] + ' мин' : ''));
+      }
       var more = el('button', 'link'); more.appendChild(el('span', 'grow', 'Пульс подробно, поднять окно')); more.appendChild(el('span', 'arrow', '→'));
       more.addEventListener('click', function () { setAct('m:pc', { a: 'cmd', c: 'pc' }); submit(); });
       pl.appendChild(more);
