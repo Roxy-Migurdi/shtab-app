@@ -158,13 +158,14 @@ def build():
     if board_dir not in sys.path:
         sys.path.append(board_dir)
     import publish_board
-    password, _ = publish_board.get_or_create_password()
-
     docs_json = json.dumps(docs, ensure_ascii=False)
-    payload = publish_board.encrypt(docs_json, password)
-
-    with open(OUT_ENC, "w", encoding="utf-8") as f:
-        json.dump(payload, f)
+    # Один mutex с ротацией: прочитанный пароль и опубликованный ciphertext
+    # должны принадлежать одной версии секрета. Pending-ротация блокирует сборку.
+    with publish_board.password_rotation_lock():
+        publish_board.assert_no_pending_rotation()
+        password, _ = publish_board.get_or_create_password()
+        payload = publish_board.encrypt(docs_json, password)
+        publish_board.write_payload_atomic(OUT_ENC, payload)
 
     # Удаляем незашифрованный docs_data.js для предотвращения утечек
     if os.path.exists(OUT_LEGACY_JS):

@@ -82,6 +82,10 @@
   .dot.now, .led.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
   .led.warn { background: var(--warn); } .led.bad { background: var(--bad); }
   .hint { font-size: 12.5px; color: var(--faint); margin: 6px 2px 12px; }
+  .password-change-action { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .password-change-action a { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 12px; border: 1px solid var(--line2); border-radius: 10px; color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; }
+  .password-change-action a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .password-change-action .hint { flex: 1 1 220px; margin: 0; }
   .status { display: flex; align-items: center; gap: 8px; margin-top: 4px; font: 11.5px var(--mono); color: var(--hint); }
   .status .led { margin-top: 0; }
   .tele { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-top: 14px; }
@@ -141,6 +145,25 @@
     if (cls) e.className = cls;
     if (text !== undefined && text !== null) e.textContent = text;
     return e;
+  }
+  var CHANGE_PASSWORD_URL = 'https://t.me/RoxyFreelanceBot?start=change_password';
+  function passwordChangeAction() {
+    var action = el('div', 'password-change-action');
+    var link = el('a', null, 'Сменить пароль');
+    link.href = CHANGE_PASSWORD_URL;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.addEventListener('click', function (event) {
+      if (tg && tg.platform && tg.platform !== 'unknown' && typeof tg.openTelegramLink === 'function') {
+        try {
+          tg.openTelegramLink(CHANGE_PASSWORD_URL);
+          event.preventDefault();
+        } catch (e) { /* Обычная внешняя ссылка остаётся запасным путём. */ }
+      }
+    });
+    action.appendChild(link);
+    action.appendChild(el('div', 'hint', 'Пароль общий для файлов и полной доски; смена в личном чате бота.'));
+    return action;
   }
   function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
   function tick(n, one, few, many) { var m = n % 100, k = n % 10; return (m > 10 && m < 20) ? many : (k === 1 ? one : (k > 1 && k < 5 ? few : many)); }
@@ -544,7 +567,7 @@
 
       var gate = el('div', 'card');
       gate.appendChild(el('div', 'title', 'Защищённый архив документов'));
-      gate.appendChild(el('div', 'hint', 'Все 40 внутренних спецификаций, исследований и регламентов зашифрованы AES-256-GCM. Введите пароль (тот же, что от доски):'));
+      gate.appendChild(el('div', 'hint', 'Внутренние спецификации, исследования и регламенты зашифрованы AES-256-GCM. Введите пароль (тот же, что от доски):'));
 
       var pBox = el('div');
       pBox.style.marginTop = '12px';
@@ -599,6 +622,7 @@
       pBox.appendChild(pBtn);
       gate.appendChild(pBox);
       gate.appendChild(pErr);
+      gate.appendChild(passwordChangeAction());
       view.appendChild(gate);
       return;
     }
@@ -674,6 +698,7 @@
     });
     searchBox.appendChild(lockBtn);
     intro.appendChild(searchBox);
+    intro.appendChild(passwordChangeAction());
 
     // Панель фильтров (Авторы + Сортировка)
     var filterRow = el('div');
