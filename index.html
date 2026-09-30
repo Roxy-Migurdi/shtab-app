@@ -111,6 +111,24 @@
   .meter { height: 2px; background: var(--line); margin-top: 8px; }
   .meter i { display: block; height: 100%; background: var(--text); }
   .meter i.warn { background: var(--warn); } .meter i.bad { background: var(--bad); }
+  .obs-group { margin: 14px 0 8px; font-size: 14px; font-weight: 600; }
+  .obs-row { display: block; min-width: 0; }
+  .obs-row .row, .legacy-row .row { flex-wrap: wrap; gap: 4px 12px; }
+  .obs-row .row > *, .legacy-row .row > * { min-width: 0; overflow-wrap: anywhere; }
+  .obs-row .row > .grow { flex: 1 1 8rem; min-width: min(8rem, 100%); }
+  .obs-row .obs-value { max-width: 100%; }
+  .obs-row .meta, .legacy-row .meta, .obs-note { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+  .legacy-row { flex-wrap: wrap; }
+  .obs-note { margin-top: 5px; font-size: 11.5px; color: var(--hint); }
+  .obs-state { color: var(--warn); }
+  .obs-row[data-state="fresh"] .obs-state { color: var(--hint); }
+  .obs-value { font-variant-numeric: tabular-nums; }
+  .obs-muted .meter i { background: var(--faint); }
+  .status { align-items: flex-start; overflow-wrap: anywhere; }
+  @media (max-width: 380px) { .tele { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tele > div:nth-child(3) { border-left: 0; }
+    .tele > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .obs-row { padding: 12px; } }
   details.fold summary { list-style: none; cursor: pointer; }
   details.fold summary::-webkit-details-marker { display: none; }
   #send { position: fixed; left: 16px; right: 16px; bottom: 14px; min-height: 52px; border: 0; border-radius: 12px; background: var(--accent);
@@ -194,15 +212,26 @@
       ', платформа ' + (tg && tg.platform ? tg.platform : 'нет') + ', initData ' + (tg && tg.initData ? 'есть' : 'пусто')));
     return;
   }
-  // Возраст снимка = пульс ПК: снимок пишет компьютер раз в 5 минут; старый снимок значит, что ПК спит или выключен.
+  // Свежесть документа и телеметрии — разные факты; время снимка не доказывает online.
+  function obsText(v, limit) { return typeof v === 'string' ? v.slice(0, limit || 120) : ''; }
+  function obsNumber(v, min, max) { return typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : null; }
+  function obsEpoch(v) { return obsNumber(v, 946684800, 4102444800); }
+  function obsTime(v) {
+    var t = obsEpoch(v); if (t === null) return 'время неизвестно';
+    return new Date(t * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+  function obsAge(t) { return Math.max(0, Math.floor((Date.now() / 1000 - t) / 60)); }
+  var refreshFailed = false;
   var st = el('div', 'status'); head.appendChild(st);
   function paintStatus() {
-    var m = /(\d{2})\.(\d{2}) (\d{2}):(\d{2})/.exec(d.t || ''), age = null;
-    if (m) { var now = new Date(); age = Math.round((now - new Date(now.getFullYear(), +m[2] - 1, +m[1], +m[3], +m[4])) / 60000); }
+    var stamp = obsEpoch(d.generated_at), now = Date.now() / 1000, label, tone = '';
+    if (stamp === null) label = 'Снимок: ' + (obsText(d.t, 32) || 'время неизвестно') + ' · возраст не подтверждён';
+    else if (stamp > now) label = 'Время снимка в будущем · проверьте часы';
+    else { var age = obsAge(stamp); tone = age > 10 ? 'warn' : ''; label = (age > 10 ? 'Снимок устарел' : 'Снимок') + ' · ' + obsTime(stamp) + ' · ' + (age ? age + ' мин назад' : 'менее минуты назад'); }
+    if (refreshFailed) label += ' · не удалось обновить, показаны прежние данные';
     clear(st);
-    st.appendChild(el('span', 'led ' + (age === null ? '' : age <= 10 ? 'ok' : age <= 60 ? 'warn' : 'bad')));
-    st.appendChild(el('span', null, age === null ? 'снимок ' + (d.t || '—') : age <= 10 ? 'ПК в сети · ' + d.t.slice(-5) + (d.pc ? ' · аптайм ' + d.pc[0] : '')
-      : age <= 60 ? 'снимок отстаёт на ' + age + ' мин' : 'ПК молчит с ' + d.t));
+    st.appendChild(el('span', 'led ' + tone));
+    st.appendChild(el('span', null, label));
   }
   paintStatus();
 
@@ -299,8 +328,101 @@
     var m = el('div', 'meter'), i = el('i', pct >= 95 ? 'bad' : (pct >= 80 ? 'warn' : ''));
     i.style.width = Math.max(0, Math.min(100, pct)) + '%'; m.appendChild(i); return m;
   }
+  function hasObs() { return d.obs && d.obs.v === 1 && typeof d.obs === 'object'; }
+  function obsState(record, observed, ttl, isQuota) {
+    var status = record.status, now = Date.now() / 1000, stamp = obsEpoch(observed);
+    if (['fresh', 'stale', 'unknown', 'awaiting_reset_refresh'].indexOf(status) < 0 || status === 'unknown' || stamp === null || stamp > now || obsNumber(ttl, 1, 2678400) === null) return 'unknown';
+    if (isQuota && (status === 'awaiting_reset_refresh' || (obsEpoch(record.reset_at) !== null && record.reset_at <= now))) return 'awaiting_reset_refresh';
+    return status === 'stale' || now - stamp > ttl ? 'stale' : 'fresh';
+  }
+  function obsStateText(status) {
+    return { fresh: 'Свежие данные', stale: 'Данные устарели', unknown: 'Нет свежих данных', awaiting_reset_refresh: 'Срок сброса прошёл · ждём обновления' }[status];
+  }
+  function obsReason(reason) {
+    var text = obsText(reason, 180);
+    return { missing_source: 'Источник ещё не подключён', source_missing: 'Источник ещё не подключён', source_unavailable: 'Источник недоступен', source_invalid: 'Источник передал некорректные данные', no_data: 'Нет измерения',
+      collector_failed: 'Не удалось получить измерение', sensor_unavailable: 'Датчик недоступен', sensor_not_configured: 'Датчик не подключён', unsupported: 'Измерение не поддерживается',
+      window_not_provided: 'Источник не передал это окно квоты', invalid_window: 'Некорректные данные окна квоты', invalid_window_id: 'Не удалось определить окно квоты',
+      observation_time_invalid: 'Время наблюдения отсутствует или некорректно', reset_not_after_observation: 'Время сброса не согласуется с замером', reset_elapsed: 'Нужен новый замер после сброса',
+      observation_stale: 'Нет свежего наблюдения', source_bounds_exceeded: 'Источник передал слишком много данных', provider_unavailable: 'Сборщик показателей недоступен', sample_failed: 'Не удалось получить измерение',
+      sample_not_provided: 'Измерение не передано', invalid_sample: 'Некорректное измерение', observed: '', recorded_marker: 'Сохранённая отметка, не новый опрос квоты' }[text] || (text === 'observed' ? '' : text);
+  }
+  function obsSource(row, stamp, measurementMissing) {
+    var time = obsEpoch(stamp), now = Date.now() / 1000;
+    var source = obsText(row.source, 80);
+    source = { 'codex.get_usage_limits': 'квота Codex', 'claude.rate_limit_event': 'источник квоты Клода', 'limits.roxy_marker': 'сохранённая отметка ROXY', psutil: 'системный сборщик', none: 'источник не подключён' }[source] || source;
+    return (measurementMissing ? 'Время измерения неизвестно' : time === null ? 'Время наблюдения неизвестно' : time > now ? 'Время наблюдения в будущем' : 'Замер ' + obsTime(time) + ' · ' + obsAge(time) + ' мин назад') +
+      (source ? ' · ' + source : ' · источник не указан');
+  }
+  function obsRow(label, value, status, detail, source) {
+    var row = el('div', 'link obs-row' + (status !== 'fresh' ? ' obs-muted' : '')), top = el('div', 'row');
+    row.dataset.state = status;
+    top.appendChild(el('span', 'grow', label)); top.appendChild(el('span', 'obs-value', value)); row.appendChild(top);
+    row.appendChild(el('div', 'obs-note obs-state', obsStateText(status)));
+    if (detail) row.appendChild(el('div', 'obs-note', detail));
+    if (source) row.appendChild(el('div', 'obs-note', source));
+    return row;
+  }
+  function obsMetricValue(metric) {
+    var unit = metric.unit, value = obsNumber(metric.value, -273.15, 1000000000000);
+    if (value === null || ['%', 'GB', 'ГиБ', 's', 'с', '°C'].indexOf(unit) < 0 || (unit !== '°C' && value < 0) || (unit === '%' && value > 100) || (unit === '°C' && value > 300)) return null;
+    if (unit === 's' || (unit === 'с' && metric.id === 'uptime_s')) { var minutes = Math.floor(value / 60); return Math.floor(minutes / 1440) + ' д ' + Math.floor(minutes % 1440 / 60) + ' ч ' + minutes % 60 + ' мин'; }
+    return String(Math.round(value * 10) / 10) + (unit === 'GB' ? ' ГБ' : ' ' + unit);
+  }
+  var observationView = null;
+  function paintObservations() {
+    if (!observationView || !hasObs()) return;
+    clear(observationView);
+    var quotas = Array.isArray(d.obs.quotas) ? d.obs.quotas.slice(0, 32) : [];
+    observationView.appendChild(el('h2', null, 'Агенты и лимиты'));
+    [['codex', 'Codex'], ['claude', 'Клод'], ['roxy', 'ROXY']].forEach(function (agent) {
+      var rows = quotas.filter(function (x) { return x && typeof x === 'object' && x.agent === agent[0]; });
+      observationView.appendChild(el('div', 'obs-group', agent[1]));
+      var list = el('div', 'list');
+      if (!rows.length) list.appendChild(obsRow('Квоты', '—', 'unknown', 'Источник квоты не передал данные.', ''));
+      rows.forEach(function (row) {
+        var state = obsState(row, row.observed_at, row.stale_after_s, true), used = obsNumber(row.used_pct, 0, 100), remaining = obsNumber(row.remaining_pct, 0, 100);
+        if (used === null || remaining === null || Math.abs(used + remaining - 100) > 1) state = 'unknown';
+        var values = state === 'unknown' ? '—' : 'Использовано ' + Math.round(used) + '% · осталось ' + Math.round(remaining) + '%';
+        if (state !== 'fresh' && state !== 'unknown') values = 'Последнее: ' + values.toLowerCase();
+        var reset = obsEpoch(row.reset_at), detail = reset === null ? 'Время сброса неизвестно' : reset <= Date.now() / 1000 ? 'Прогноз сброса был ' + obsTime(reset) + '; доступность не подтверждена.' : 'Сброс по прогнозу: ' + obsTime(reset);
+        var reason = obsReason(row.reason); if (reason && state !== 'fresh') detail += ' · ' + reason;
+        var item = obsRow(obsText(row.label, 90).replace(/^(Codex|Клод|Claude|ROXY)\s*·\s*/i, '') || 'Окно квоты', values, state, detail, obsSource(row, row.observed_at));
+        if (state !== 'unknown') item.appendChild(meterRow(used));
+        list.appendChild(item);
+      });
+      observationView.appendChild(list);
+    });
+    observationView.appendChild(el('div', 'hint', 'Квота показывает расход аккаунта. Она не подтверждает, что окно агента открыто или агент сейчас отвечает. Время — на вашем устройстве.'));
+
+    var pc = d.obs.pc && typeof d.obs.pc === 'object' ? d.obs.pc : {}, metrics = Array.isArray(pc.metrics) ? pc.metrics.slice(0, 32) : [];
+    var stamp = obsEpoch(pc.observed_at), age = stamp !== null && stamp <= Date.now() / 1000 ? Date.now() / 1000 - stamp : null, ttl = obsNumber(pc.stale_after_s, 1, 2678400);
+    var hasFresh = metrics.some(function (x) { return x && typeof x === 'object' && obsState(x, pc.observed_at, pc.stale_after_s, false) === 'fresh' && obsMetricValue(x) !== null; });
+    var heading = hasFresh ? 'Компьютер · свежий замер' : age !== null && ttl !== null && age > ttl ? 'Компьютер · замер устарел' : 'Компьютер · нет свежего замера';
+    observationView.appendChild(el('h2', null, heading));
+    var pl = el('div', 'list');
+    if (!metrics.length) pl.appendChild(obsRow('Показатели ПК', '—', 'unknown', 'Источник телеметрии не передал измерения.', ''));
+    metrics.forEach(function (metric) {
+      if (!metric || typeof metric !== 'object') return;
+      var state = obsState(metric, pc.observed_at, pc.stale_after_s, false), value = obsMetricValue(metric);
+      if (value === null) state = 'unknown';
+      var display = state === 'unknown' ? '—' : (state === 'stale' ? 'Последнее: ' : '') + value;
+      pl.appendChild(obsRow(obsText(metric.label, 90) || 'Показатель', display, state, state === 'fresh' ? '' : obsReason(metric.reason) || 'Нет подтверждённого свежего измерения.', obsSource(metric, pc.observed_at, state === 'unknown')));
+    });
+    if (Array.isArray(d.pc)) {
+      [['Окно Клода', d.pc[3]], ['Окно ROXY', d.pc[4]]].forEach(function (pair) {
+        if (!obsText(pair[1], 100)) return;
+        var row = el('div', 'link obs-row'); row.appendChild(el('div', null, pair[0] + ': ' + obsText(pair[1], 100)));
+        row.appendChild(el('div', 'obs-note', 'Отдельное наблюдение окна из снимка; ответ агента и свежесть квоты проверяются отдельно.')); pl.appendChild(row);
+      });
+    }
+    var more = el('button', 'link'); more.appendChild(el('span', 'grow', 'Пульс подробно, поднять окно')); more.appendChild(el('span', 'arrow', '→'));
+    more.addEventListener('click', function () { setAct('m:pc', { a: 'cmd', c: 'pc' }); submit(); }); pl.appendChild(more);
+    observationView.appendChild(pl);
+  }
   function winState(t) { return String(t || '').split('(')[0].trim() || '—'; }
   function home() {
+    observationView = null;
     var open = d.cards ? d.cards[0] - d.cards[1] : null, inWork = d.cards ? d.cards[2] : null;
     var tele = el('div', 'tele');
     function cell(k, v, cls, onTap) {
@@ -325,29 +447,49 @@
       view.appendChild(l);
     }
 
-    if (d.lim && d.lim.length) {
+    if (d.fallback_incomplete === true) view.appendChild(el('div', 'hint', 'Краткий снимок неполный: часть данных не поместилась. Полные данные появятся после загрузки.'));
+    if (hasObs()) {
+      observationView = el('div', 'observations'); view.appendChild(observationView); paintObservations();
+    } else {
+      view.appendChild(el('div', 'hint', d.full && !d.obs_compact ? 'Подробные квоты и датчики отсутствуют в этом снимке; показан прежний формат.' : 'Краткий снимок: подробные квоты и датчики появятся после загрузки полного снимка.'));
+    }
+    if (!hasObs() && Array.isArray(d.lim) && d.lim.length) {
       view.appendChild(el('h2', null, 'Агенты и лимиты'));
-      var al = el('div', 'list');
-      d.lim.forEach(function (x) {
-        var r = el('div', 'link'), g = el('div', 'grow'), top = el('div', 'row');
-        top.appendChild(el('span', null, x[0]));
-        top.appendChild(el('span', 'meta', (x[1] !== null ? x[1] + '% · ' : '') + (x[2] || '')));
-        g.appendChild(top); if (x[1] !== null) g.appendChild(meterRow(x[1]));
+      var al = el('div', 'list'), legacyAgents = { codex: false, claude: false, roxy: false };
+      d.lim.slice(0, 32).forEach(function (x) {
+        if (!Array.isArray(x)) return;
+        var label = obsText(x[0], 90), name = label.trim();
+        if (/^Codex(?:\s|[·:—-]|$)/i.test(name)) legacyAgents.codex = true;
+        if (/^(?:Клод|Claude)(?:\s|[·:—-]|$)/i.test(name)) legacyAgents.claude = true;
+        if (/^ROXY(?:\s|[·:—-]|$)/i.test(name)) legacyAgents.roxy = true;
+        var pct = obsNumber(x[1], 0, 100), r = el('div', 'link legacy-row'), g = el('div', 'grow'), top = el('div', 'row');
+        top.appendChild(el('span', null, label));
+        top.appendChild(el('span', 'meta', (pct !== null ? pct + '% · ' : '') + (obsText(x[2], 180) || 'Нет свежих данных')));
+        g.appendChild(top); if (pct !== null) g.appendChild(meterRow(pct));
         r.appendChild(g); al.appendChild(r);
       });
+      [['codex', 'Codex'], ['claude', 'Клод'], ['roxy', 'ROXY']].forEach(function (agent) {
+        if (!legacyAgents[agent[0]]) al.appendChild(obsRow(agent[1], '—', 'unknown', 'Снимок не содержит данных квоты этого агента.', ''));
+      });
       view.appendChild(al);
-      view.appendChild(el('div', 'hint', 'Процент — сколько лимита потрачено; время — когда он откатится. Данные на ' + (d.t || '—') + '.'));
+      view.appendChild(el('div', 'hint', 'Процент — сколько лимита потрачено. В кратком формате свежесть каждого источника не подтверждена.'));
+    } else if (!hasObs()) {
+      view.appendChild(el('h2', null, 'Агенты и лимиты'));
+      var emptyLimits = el('div', 'list');
+      ['Codex', 'Клод', 'ROXY'].forEach(function (name) { emptyLimits.appendChild(obsRow(name, '—', 'unknown', 'Снимок не содержит данных квоты.', '')); });
+      view.appendChild(emptyLimits);
     }
 
-    if (d.pc) {
+    if (!hasObs() && Array.isArray(d.pc)) {
       view.appendChild(el('h2', null, 'Компьютер'));
       var pl = el('div', 'list');
-      function pcRow(k, v) { var r = el('div', 'link'); r.appendChild(el('span', 'grow', k)); r.appendChild(el('span', 'meta', v)); pl.appendChild(r); }
-      pcRow('Работает без перезагрузки', d.pc[0]);
-      pcRow('Память занята', d.pc[2] + '% · свободно ' + d.pc[1] + ' ГБ');
+      function pcRow(k, v) { var r = el('div', 'link legacy-row'); r.appendChild(el('span', 'grow', k)); r.appendChild(el('span', 'meta', obsText(String(v), 160))); pl.appendChild(r); }
+      pcRow('Работает без перезагрузки', obsText(d.pc[0], 100) || 'нет данных');
+      var ramPct = obsNumber(d.pc[2], 0, 100), ramFree = obsNumber(d.pc[1], 0, 1000000000), queued = obsNumber(d.pc[5], 0, 1000000000);
+      pcRow('Память занята', (ramPct === null ? 'нет данных' : ramPct + '%') + (ramFree === null ? '' : ' · свободно ' + ramFree + ' ГБ'));
       pcRow('Окно Клода', winState(d.pc[3]));
       pcRow('Окно ROXY', winState(d.pc[4]));
-      pcRow('Ждут в очереди', String(d.pc[5] || 0));
+      pcRow('Ждут в очереди', queued === null ? 'нет данных' : String(queued));
       if (d.tr && d.tr[0] > 0) {
         pcRow('Сообщений в пути', d.tr[0] + (d.tr[1] !== null && d.tr[1] !== undefined ? ' · старейшее ' + d.tr[1] + ' мин' : ''));
       }
@@ -355,10 +497,13 @@
       more.addEventListener('click', function () { setAct('m:pc', { a: 'cmd', c: 'pc' }); submit(); });
       pl.appendChild(more);
       view.appendChild(pl);
+    } else if (!hasObs()) {
+      view.appendChild(el('h2', null, 'Компьютер · нет данных'));
+      var emptyPC = el('div', 'list'); emptyPC.appendChild(obsRow('Показатели ПК', '—', 'unknown', 'Снимок не содержит телеметрию ПК.', '')); view.appendChild(emptyPC);
     }
 
     if (d.sv && d.sv[2] && d.sv[2].length) {
-      view.appendChild(el('h2', null, 'Службы без ответа'));
+      view.appendChild(el('h2', null, 'Проверки состояния'));
       var sl = el('div', 'list');
       d.sv[2].forEach(function (n) { var r = el('div', 'link'); r.appendChild(el('span', 'led warn')); r.appendChild(el('span', 'grow', n)); sl.appendChild(r); });
       view.appendChild(sl);
@@ -1076,23 +1221,34 @@
   // Полный снимок: шифрованный файл, ключ во фрагменте адреса (#k=, на сервер не уходит). Обновляется раз в минуту, пока Штаб открыт.
   var KEY = (/[#&]k=([A-Za-z0-9_-]{43})/.exec(location.hash) || [])[1];
   var SNAP_URL = /github\.io$/.test(location.hostname) ? 'https://raw.githubusercontent.com/roxy-migurdi/shtab-app/snap/snap.enc.json' : 'snap/snap.enc.json';
+  var fullSignature = null;
   function b64u(v) { v = v.replace(/-/g, '+').replace(/_/g, '/'); while (v.length % 4) v += '='; return Uint8Array.from(atob(v), function (c) { return c.charCodeAt(0); }); }
   async function loadFull() {
     if (!KEY || !window.crypto || !crypto.subtle) return;
-    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;  // не сбивать набор комментария
+    if (document.activeElement && ['TEXTAREA', 'INPUT', 'SELECT'].indexOf(document.activeElement.tagName) >= 0) return;  // не сбивать ввод
     try {
       var r = await fetch(SNAP_URL + '?t=' + Date.now(), { cache: 'no-store' });
-      if (!r.ok) return;
+      if (!r.ok) { refreshFailed = true; paintStatus(); return; }
       var e = await r.json();
       var k = await crypto.subtle.importKey('raw', b64u(KEY), 'AES-GCM', false, ['decrypt']);
       var full = JSON.parse(new TextDecoder('utf-8').decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64u(e.iv) }, k, b64u(e.ct))));
-      if (d.full && full.t === d.t) return;
+      if (!full || typeof full !== 'object' || Array.isArray(full)) throw new Error('invalid_snapshot');
+      var signature = JSON.stringify(full);
+      if (signature.length > 2000000) throw new Error('snapshot_too_large');
+      refreshFailed = false; paintStatus();
+      if (signature === fullSignature) return;
+      fullSignature = signature;
       d = full; d.full = true; askN = d.ask ? d.ask.length : 0;
-      paintStatus(); drawTabs(); if (tab !== 'docs') draw();
-    } catch (err) {}
+      paintStatus(); drawTabs(); if (tab === 'home') draw();  // формы и выбранные действия не пересоздаём
+    } catch (err) { refreshFailed = true; paintStatus(); }
   }
   drawTabs(); draw(); refreshSend();
   loadFull(); setInterval(function () { if (!document.hidden) loadFull(); }, 60000);
+  setInterval(function () {
+    if (document.hidden) return;
+    paintStatus();
+    if (tab === 'home' && observationView && (!document.activeElement || !observationView.contains(document.activeElement))) paintObservations();
+  }, 15000);
 })();
 </script>
 </body>
