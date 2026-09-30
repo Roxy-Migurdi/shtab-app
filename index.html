@@ -341,7 +341,7 @@
   function obsReason(reason) {
     var text = obsText(reason, 180);
     return { missing_source: 'Источник ещё не подключён', source_missing: 'Источник ещё не подключён', source_unavailable: 'Источник недоступен', source_invalid: 'Источник передал некорректные данные', no_data: 'Нет измерения',
-      collector_failed: 'Не удалось получить измерение', sensor_unavailable: 'Датчик недоступен', sensor_not_configured: 'Датчик не подключён', unsupported: 'Измерение не поддерживается',
+      collector_failed: 'Не удалось получить измерение', sensor_unavailable: 'Датчик недоступен', sensor_not_found: 'Датчик не найден', sensor_not_configured: 'Датчик не подключён', unsupported: 'Измерение не поддерживается',
       window_not_provided: 'Источник не передал это окно квоты', invalid_window: 'Некорректные данные окна квоты', invalid_window_id: 'Не удалось определить окно квоты',
       observation_time_invalid: 'Время наблюдения отсутствует или некорректно', reset_not_after_observation: 'Время сброса не согласуется с замером', reset_elapsed: 'Нужен новый замер после сброса',
       observation_stale: 'Нет свежего наблюдения', source_bounds_exceeded: 'Источник передал слишком много данных', provider_unavailable: 'Сборщик показателей недоступен', sample_failed: 'Не удалось получить измерение',
@@ -350,6 +350,7 @@
   function obsSource(row, stamp, measurementMissing) {
     var time = obsEpoch(stamp), now = Date.now() / 1000;
     var source = obsText(row.source, 80);
+    if (source === 'librehardwaremonitor') return 'LibreHardwareMonitor · ' + (time === null ? 'время получения неизвестно' : time > now ? 'время получения в будущем' : 'время получения ' + obsTime(time) + ' · ' + obsAge(time) + ' мин назад');
     source = { 'codex.get_usage_limits': 'квота Codex', 'claude.rate_limit_event': 'источник квоты Клода', 'limits.roxy_marker': 'сохранённая отметка ROXY', psutil: 'системный сборщик', none: 'источник не подключён' }[source] || source;
     return (measurementMissing ? 'Время измерения неизвестно' : time === null ? 'Время наблюдения неизвестно' : time > now ? 'Время наблюдения в будущем' : 'Замер ' + obsTime(time) + ' · ' + obsAge(time) + ' мин назад') +
       (source ? ' · ' + source : ' · источник не указан');
@@ -363,9 +364,15 @@
     if (source) row.appendChild(el('div', 'obs-note', source));
     return row;
   }
+  function obsMetricStamp(metric, pc) {
+    return Object.prototype.hasOwnProperty.call(metric, 'observed_at') ? metric.observed_at : pc.observed_at;
+  }
+  function obsMetricTtl(metric, pc) {
+    return Object.prototype.hasOwnProperty.call(metric, 'stale_after_s') ? metric.stale_after_s : pc.stale_after_s;
+  }
   function obsMetricValue(metric) {
     var unit = metric.unit, value = obsNumber(metric.value, -273.15, 1000000000000);
-    if (value === null || ['%', 'GB', 'ГиБ', 's', 'с', '°C'].indexOf(unit) < 0 || (unit !== '°C' && value < 0) || (unit === '%' && value > 100) || (unit === '°C' && value > 300)) return null;
+    if (value === null || ['%', 'MB', 'GB', 'ГиБ', 's', 'с', '°C'].indexOf(unit) < 0 || (unit !== '°C' && value < 0) || (unit === '%' && value > 100) || (unit === '°C' && value > 300)) return null;
     if (unit === 's' || (unit === 'с' && metric.id === 'uptime_s')) { var minutes = Math.floor(value / 60); return Math.floor(minutes / 1440) + ' д ' + Math.floor(minutes % 1440 / 60) + ' ч ' + minutes % 60 + ' мин'; }
     return String(Math.round(value * 10) / 10) + (unit === 'GB' ? ' ГБ' : ' ' + unit);
   }
@@ -396,18 +403,17 @@
     observationView.appendChild(el('div', 'hint', 'Квота показывает расход аккаунта. Она не подтверждает, что окно агента открыто или агент сейчас отвечает. Время — на вашем устройстве.'));
 
     var pc = d.obs.pc && typeof d.obs.pc === 'object' ? d.obs.pc : {}, metrics = Array.isArray(pc.metrics) ? pc.metrics.slice(0, 32) : [];
-    var stamp = obsEpoch(pc.observed_at), age = stamp !== null && stamp <= Date.now() / 1000 ? Date.now() / 1000 - stamp : null, ttl = obsNumber(pc.stale_after_s, 1, 2678400);
-    var hasFresh = metrics.some(function (x) { return x && typeof x === 'object' && obsState(x, pc.observed_at, pc.stale_after_s, false) === 'fresh' && obsMetricValue(x) !== null; });
-    var heading = hasFresh ? 'Компьютер · свежий замер' : age !== null && ttl !== null && age > ttl ? 'Компьютер · замер устарел' : 'Компьютер · нет свежего замера';
+    function hasMetricState(state) { return metrics.some(function (x) { return x && typeof x === 'object' && obsState(x, obsMetricStamp(x, pc), obsMetricTtl(x, pc), false) === state && obsMetricValue(x) !== null; }); }
+    var heading = hasMetricState('fresh') ? 'Компьютер · свежие данные' : hasMetricState('stale') ? 'Компьютер · данные устарели' : 'Компьютер · нет свежих данных';
     observationView.appendChild(el('h2', null, heading));
     var pl = el('div', 'list');
     if (!metrics.length) pl.appendChild(obsRow('Показатели ПК', '—', 'unknown', 'Источник телеметрии не передал измерения.', ''));
     metrics.forEach(function (metric) {
       if (!metric || typeof metric !== 'object') return;
-      var state = obsState(metric, pc.observed_at, pc.stale_after_s, false), value = obsMetricValue(metric);
+      var stamp = obsMetricStamp(metric, pc), state = obsState(metric, stamp, obsMetricTtl(metric, pc), false), value = obsMetricValue(metric);
       if (value === null) state = 'unknown';
       var display = state === 'unknown' ? '—' : (state === 'stale' ? 'Последнее: ' : '') + value;
-      pl.appendChild(obsRow(obsText(metric.label, 90) || 'Показатель', display, state, state === 'fresh' ? '' : obsReason(metric.reason) || 'Нет подтверждённого свежего измерения.', obsSource(metric, pc.observed_at, state === 'unknown')));
+      pl.appendChild(obsRow(obsText(metric.label, 90) || 'Показатель', display, state, state === 'fresh' ? '' : obsReason(metric.reason) || 'Нет подтверждённого свежего измерения.', obsSource(metric, stamp, state === 'unknown')));
     });
     if (Array.isArray(d.pc)) {
       [['Окно Клода', d.pc[3]], ['Окно ROXY', d.pc[4]]].forEach(function (pair) {
