@@ -1273,7 +1273,7 @@
       navigator.clipboard.writeText(text).then(function () {
         showToast('Скопировано: ' + (label || text));
       }).catch(function () {
-        showToast('Скопировано: ' + (label || text));
+        showToast('Не удалось скопировать');
       });
     } else {
       var ta = document.createElement('textarea');
@@ -1283,10 +1283,14 @@
       document.body.appendChild(ta);
       ta.select();
       try {
-        document.execCommand('copy');
-        showToast('Скопировано: ' + (label || text));
+        var ok = document.execCommand('copy');
+        if (ok) {
+          showToast('Скопировано: ' + (label || text));
+        } else {
+          showToast('Не удалось скопировать');
+        }
       } catch (e) {
-        showToast('Скопировано: ' + (label || text));
+        showToast('Не удалось скопировать');
       }
       document.body.removeChild(ta);
     }
@@ -1336,12 +1340,13 @@
           if (item.how) {
             var howBox = el('div', 'how-box');
             howBox.appendChild(el('span', null, 'Как изменить:'));
-            if (item.how.indexOf('/') === 0) {
+            var copyCmd = item.copy || (item.how.indexOf('/') === 0 ? item.how : null);
+            if (copyCmd) {
               var cmdBtn = el('button', 'how-cmd', item.how);
-              cmdBtn.title = 'Нажмите, чтобы скопировать команду';
+              cmdBtn.title = 'Нажмите, чтобы скопировать команду ' + copyCmd;
               cmdBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                copyText(item.how, item.how);
+                copyText(copyCmd, copyCmd);
               });
               howBox.appendChild(cmdBtn);
             } else {
@@ -1455,7 +1460,7 @@
             }
 
             row.addEventListener('click', function () {
-              var toCopy = item.example || item.cmd;
+              var toCopy = item.copy || item.example || item.cmd;
               copyText(toCopy, toCopy);
             });
             list.appendChild(row);
@@ -1497,7 +1502,7 @@
       if (signature === fullSignature) return;
       fullSignature = signature;
       d = full; d.full = true; askN = d.ask ? d.ask.length : 0;
-      paintStatus(); drawTabs(); if (tab === 'home') draw();  // формы и выбранные действия не пересоздаём
+      paintStatus(); drawTabs(); if (tab === 'home' || tab === 'settings') draw();  // формы и выбранные действия не пересоздаём
     } catch (err) { refreshFailed = true; paintStatus(); }
   }
   drawTabs(); draw(); refreshSend();
