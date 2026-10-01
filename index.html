@@ -135,6 +135,34 @@
           color: var(--accent-text); font-weight: 600; display: none; z-index: 5; }
   #toast { position: fixed; left: 16px; right: 16px; bottom: 78px; padding: 12px 14px; border-radius: 12px; background: var(--raise);
            border: 1px solid var(--line2); color: var(--text); display: none; z-index: 6; font-size: 13px; }
+  .head-row { display: flex; justify-content: space-between; align-items: center; }
+  .gear-btn { background: none; border: 1px solid var(--line); border-radius: 9px; color: var(--text-dim); font-size: 18px;
+              line-height: 1; padding: 7px 11px; cursor: pointer; transition: background 160ms var(--ease), color 160ms var(--ease), border-color 160ms var(--ease); }
+  .gear-btn:hover, .gear-btn:active { color: var(--text); border-color: var(--line2); }
+  .gear-btn.on { color: var(--text); background: var(--raise); border-color: var(--line2); }
+  .segmented { display: flex; gap: 6px; margin: 14px 0 16px; background: var(--raise); padding: 4px; border-radius: 12px; border: 1px solid var(--line); }
+  .segmented button { flex: 1; padding: 8px 12px; border: 0; border-radius: 8px; background: none; color: var(--hint);
+                      font-size: 13px; font-weight: 500; cursor: pointer; transition: background 160ms var(--ease), color 160ms var(--ease); }
+  .segmented button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .setting-row { padding: 12px 14px; border-top: 1px solid var(--line); }
+  .setting-row:first-child { border-top: 0; }
+  .setting-row .row { flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+  .setting-row .name { font-weight: 500; font-size: 14px; color: var(--text); }
+  .setting-row .val { font-family: var(--mono); font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .setting-row .how-box { margin-top: 6px; font-size: 12px; color: var(--hint); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .setting-row .how-cmd { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px;
+                          background: var(--raise); border: 1px solid var(--line2); color: var(--text); font-family: var(--mono);
+                          font-size: 11.5px; cursor: pointer; text-decoration: none; }
+  .setting-row .how-cmd:active { transform: scale(.97); background: var(--accent); color: var(--accent-text); }
+  .setting-row .src { font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-top: 4px; }
+  .cmd-item { padding: 12px 14px; border-top: 1px solid var(--line); cursor: pointer; transition: background 160ms var(--ease); }
+  .cmd-item:first-child { border-top: 0; }
+  .cmd-item:active { background: var(--raise); }
+  .cmd-item .cmd-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .cmd-item .cmd-name { font-family: var(--mono); font-weight: 600; font-size: 14px; color: var(--text); }
+  .cmd-item .cmd-args { font-family: var(--mono); font-size: 12px; color: var(--hint); }
+  .cmd-item .cmd-what { font-size: 13px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+  .cmd-item .cmd-ex { font-family: var(--mono); font-size: 11.5px; color: var(--faint); margin-top: 5px; }
   pre { white-space: pre-wrap; word-break: break-all; font: 11px var(--mono); }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -203,7 +231,18 @@
   var head = document.getElementById('head'), tabsEl = document.getElementById('tabs'),
       view = document.getElementById('view'), sendBtn = document.getElementById('send'), toast = document.getElementById('toast');
 
-  head.appendChild(el('h1', null, 'Штаб'));
+  var gearBtn = el('button', 'gear-btn', '⚙');
+  gearBtn.title = 'Настройки и слеш-команды';
+  gearBtn.setAttribute('aria-label', 'Настройки контура и слеш-команды');
+  gearBtn.addEventListener('click', function () {
+    if (tab === 'settings') go('home');
+    else go('settings');
+  });
+
+  var hRow = el('div', 'head-row');
+  hRow.appendChild(el('h1', null, 'Штаб'));
+  hRow.appendChild(gearBtn);
+  head.appendChild(hRow);
   if (!d) {
     head.appendChild(el('div', 'sub', 'Открой Mini App кнопкой «Штаб» в чате с ботом: данные приходят оттуда.'));
     view.appendChild(el('div', 'empty', 'Нет данных'));
@@ -304,6 +343,10 @@
   var TABS = [['home', 'Сводка'], ['dec', 'Решения'], ['work', 'Работа'], ['docs', 'Файлы'], ['sys', 'Пульт'], ['arc', 'Архив']];
   function drawTabs() {
     clear(tabsEl);
+    if (gearBtn) {
+      if (tab === 'settings') gearBtn.classList.add('on');
+      else gearBtn.classList.remove('on');
+    }
     TABS.forEach(function (t) {
       var b = el('button', tab === t[0] ? 'on' : '', t[1]);
       if (t[0] === 'dec' && askN) b.appendChild(el('span', 'n', String(askN)));
@@ -1222,7 +1265,216 @@
     renderList();
   }
 
-  if (tab === 'home') home(); else if (tab === 'dec') decisions(); else if (tab === 'work') work(); else if (tab === 'docs') docsView(); else if (tab === 'sys') system(); else archive();
+  var settingsSubTab = 'settings';
+  var cmdSearchTerm = '';
+
+  function copyText(text, label) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        showToast('Скопировано: ' + (label || text));
+      }).catch(function () {
+        showToast('Скопировано: ' + (label || text));
+      });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Скопировано: ' + (label || text));
+      } catch (e) {
+        showToast('Скопировано: ' + (label || text));
+      }
+      document.body.removeChild(ta);
+    }
+  }
+
+  function settingsView() {
+    clear(view);
+
+    var card = el('div', 'card');
+    card.appendChild(el('div', 'title', 'Настройки и Справочник'));
+    card.appendChild(el('div', 'hint', 'Параметры контура и команды Telegram-бота (только чтение). Нажатие на команду копирует её.'));
+    view.appendChild(card);
+
+    var seg = el('div', 'segmented');
+    var bSet = el('button', settingsSubTab === 'settings' ? 'on' : '', 'Настройки и лимиты');
+    var nCmds = (d.commands && d.commands.length) ? ' (' + d.commands.length + ')' : '';
+    var bCmd = el('button', settingsSubTab === 'commands' ? 'on' : '', 'Слеш-команды' + nCmds);
+
+    bSet.addEventListener('click', function () { settingsSubTab = 'settings'; settingsView(); });
+    bCmd.addEventListener('click', function () { settingsSubTab = 'commands'; settingsView(); });
+    seg.appendChild(bSet);
+    seg.appendChild(bCmd);
+    view.appendChild(seg);
+
+    if (settingsSubTab === 'settings') {
+      if (!d.settings || !d.settings.length) {
+        view.appendChild(el('div', 'card empty', 'данные обновятся при следующем снимке'));
+        return;
+      }
+      var groups = {};
+      d.settings.forEach(function (s) {
+        var g = s.group || 'Общие';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(s);
+      });
+
+      Object.keys(groups).forEach(function (gName) {
+        view.appendChild(el('h2', null, gName));
+        var list = el('div', 'list');
+        groups[gName].forEach(function (item) {
+          var row = el('div', 'setting-row');
+          var top = el('div', 'row');
+          top.appendChild(el('div', 'name', item.name));
+          top.appendChild(el('div', 'val', item.value));
+          row.appendChild(top);
+
+          if (item.how) {
+            var howBox = el('div', 'how-box');
+            howBox.appendChild(el('span', null, 'Как изменить:'));
+            if (item.how.indexOf('/') === 0) {
+              var cmdBtn = el('button', 'how-cmd', item.how);
+              cmdBtn.title = 'Нажмите, чтобы скопировать команду';
+              cmdBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                copyText(item.how, item.how);
+              });
+              howBox.appendChild(cmdBtn);
+            } else {
+              howBox.appendChild(el('span', null, item.how));
+            }
+            if (item.who) {
+              howBox.appendChild(el('span', 'faint', '· ' + item.who));
+            }
+            row.appendChild(howBox);
+          }
+
+          if (item.source) {
+            row.appendChild(el('div', 'src', item.source));
+          }
+          list.appendChild(row);
+        });
+        view.appendChild(list);
+      });
+    } else {
+      if (!d.commands || !d.commands.length) {
+        view.appendChild(el('div', 'card empty', 'данные обновятся при следующем снимке'));
+        return;
+      }
+
+      var searchBox = el('div');
+      searchBox.style.marginBottom = '12px';
+      searchBox.style.display = 'flex';
+      searchBox.style.gap = '8px';
+
+      var sInp = el('input');
+      sInp.type = 'text';
+      sInp.placeholder = 'Поиск команды, действия или примера...';
+      sInp.value = cmdSearchTerm;
+      sInp.style.flex = '1';
+      sInp.style.padding = '9px 12px';
+      sInp.style.borderRadius = '10px';
+      sInp.style.border = '1px solid var(--line2)';
+      sInp.style.background = 'var(--raise)';
+      sInp.style.color = 'var(--text)';
+      sInp.style.fontSize = '13.5px';
+
+      var cClear = el('button');
+      cClear.textContent = '✕';
+      cClear.style.padding = '8px 12px';
+      cClear.style.borderRadius = '10px';
+      cClear.style.border = '1px solid var(--line)';
+      cClear.style.background = 'var(--raise)';
+      cClear.style.color = 'var(--text-dim)';
+      cClear.style.cursor = 'pointer';
+      cClear.style.display = cmdSearchTerm ? 'inline-block' : 'none';
+
+      sInp.addEventListener('input', function (e) {
+        cmdSearchTerm = e.target.value.toLowerCase().trim();
+        cClear.style.display = cmdSearchTerm ? 'inline-block' : 'none';
+        renderCmdList();
+      });
+      cClear.addEventListener('click', function () {
+        cmdSearchTerm = '';
+        sInp.value = '';
+        cClear.style.display = 'none';
+        renderCmdList();
+      });
+
+      searchBox.appendChild(sInp);
+      searchBox.appendChild(cClear);
+      view.appendChild(searchBox);
+
+      var cmdListContainer = el('div');
+      view.appendChild(cmdListContainer);
+
+      function renderCmdList() {
+        clear(cmdListContainer);
+        var filtered = d.commands.filter(function (c) {
+          if (!cmdSearchTerm) return true;
+          return (c.cmd && c.cmd.toLowerCase().indexOf(cmdSearchTerm) >= 0) ||
+                 (c.what && c.what.toLowerCase().indexOf(cmdSearchTerm) >= 0) ||
+                 (c.args && c.args.toLowerCase().indexOf(cmdSearchTerm) >= 0) ||
+                 (c.example && c.example.toLowerCase().indexOf(cmdSearchTerm) >= 0) ||
+                 (c.group && c.group.toLowerCase().indexOf(cmdSearchTerm) >= 0);
+        });
+
+        if (!filtered.length) {
+          cmdListContainer.appendChild(el('div', 'card empty', 'Ничего не найдено по запросу «' + cmdSearchTerm + '»'));
+          return;
+        }
+
+        var groups = {};
+        filtered.forEach(function (c) {
+          var g = c.group || 'другие';
+          if (!groups[g]) groups[g] = [];
+          groups[g].push(c);
+        });
+
+        Object.keys(groups).forEach(function (gName) {
+          cmdListContainer.appendChild(el('h2', null, '«' + gName + '» (' + groups[gName].length + ')'));
+          var list = el('div', 'list');
+          groups[gName].forEach(function (item) {
+            var row = el('div', 'cmd-item');
+            var top = el('div', 'cmd-head');
+            top.appendChild(el('span', 'cmd-name', item.cmd));
+            if (item.args) {
+              top.appendChild(el('span', 'cmd-args', item.args));
+            }
+            row.appendChild(top);
+
+            if (item.what) {
+              row.appendChild(el('div', 'cmd-what', item.what));
+            }
+            if (item.example) {
+              row.appendChild(el('div', 'cmd-ex', 'Пример: ' + item.example));
+            }
+
+            row.addEventListener('click', function () {
+              var toCopy = item.example || item.cmd;
+              copyText(toCopy, toCopy);
+            });
+            list.appendChild(row);
+          });
+          cmdListContainer.appendChild(list);
+        });
+      }
+
+      renderCmdList();
+    }
+  }
+
+  if (tab === 'home') home();
+  else if (tab === 'dec') decisions();
+  else if (tab === 'work') work();
+  else if (tab === 'docs') docsView();
+  else if (tab === 'sys') system();
+  else if (tab === 'settings') settingsView();
+  else archive();
   }
   // Полный снимок: шифрованный файл, ключ во фрагменте адреса (#k=, на сервер не уходит). Обновляется раз в минуту, пока Штаб открыт.
   var KEY = (/[#&]k=([A-Za-z0-9_-]{43})/.exec(location.hash) || [])[1];
