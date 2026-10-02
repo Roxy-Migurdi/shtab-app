@@ -571,6 +571,13 @@
       f.appendChild(dl); view.appendChild(f);
       view.appendChild(el('div', 'hint', 'Проценты направлений ставят агенты вручную: это оценка, а не замер.'));
     }
+    var verFooter = el('div', 'hint');
+    verFooter.style.textAlign = 'center';
+    verFooter.style.marginTop = '24px';
+    verFooter.style.fontSize = '11px';
+    verFooter.style.color = 'var(--faint)';
+    verFooter.textContent = (d && d.version) ? ('Штаб ' + d.version) : 'Штаб · версия неизвестна';
+    view.appendChild(verFooter);
   }
 
   // ---- карточка с кнопками ----
@@ -1299,8 +1306,10 @@
   function settingsView() {
     clear(view);
 
+    var verLabel = (d && d.version) ? ('Штаб ' + d.version) : 'Штаб · версия неизвестна';
     var card = el('div', 'card');
-    card.appendChild(el('div', 'title', 'Настройки и Справочник'));
+    card.appendChild(el('div', 'title', 'Настройки и справочник'));
+    card.appendChild(el('div', 'hint', verLabel));
     card.appendChild(el('div', 'hint', 'Параметры контура и команды Telegram-бота (только чтение). Нажатие на команду копирует её.'));
     view.appendChild(card);
 
