@@ -445,6 +445,19 @@
     });
     observationView.appendChild(el('div', 'hint', 'Квота показывает расход аккаунта. Она не подтверждает, что окно агента открыто или агент сейчас отвечает. Время — на вашем устройстве.'));
 
+    if (d.obs && d.obs.fork_summary) {
+      observationView.appendChild(el('div', 'obs-group', 'Развилки решений (ADR-002 М6)'));
+      var flist = el('div', 'list');
+      flist.appendChild(obsRow(
+        'Три числа недели',
+        obsText(d.obs.fork_summary, 120),
+        'fresh',
+        'Цена задачи · время задачи · точность эскалации',
+        'hub.db:fork_log'
+      ));
+      observationView.appendChild(flist);
+    }
+
     var pc = d.obs.pc && typeof d.obs.pc === 'object' ? d.obs.pc : {}, metrics = Array.isArray(pc.metrics) ? pc.metrics.slice(0, 32) : [];
     function hasMetricState(state) { return metrics.some(function (x) { return x && typeof x === 'object' && obsState(x, obsMetricStamp(x, pc), obsMetricTtl(x, pc), false) === state && obsMetricValue(x) !== null; }); }
     var heading = hasMetricState('fresh') ? 'Компьютер · свежие данные' : hasMetricState('stale') ? 'Компьютер · данные устарели' : 'Компьютер · нет свежих данных';
